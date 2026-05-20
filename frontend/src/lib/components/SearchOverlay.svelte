@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import { apiFetch } from '$lib/api/client';
   import type { Product } from '$lib/api/client';
   export let open = false;
+  const dispatch = createEventDispatcher<{ close: void }>();
   let q = '';
   let results: Pick<Product, 'id' | 'slug' | 'name' | 'min_price_ars_cents'>[] = [];
   async function search() {
@@ -9,14 +11,22 @@
     const data = await apiFetch<{ items: Pick<Product, 'id' | 'slug' | 'name' | 'min_price_ars_cents'>[] }>(`/api/products/search?q=${encodeURIComponent(q)}`);
     results = data.items;
   }
+  function close() {
+    dispatch('close');
+  }
+  function keydown(event: KeyboardEvent) {
+    if (event.key === 'Escape' && open) close();
+  }
 </script>
+
+<svelte:window on:keydown={keydown} />
 
 {#if open}
   <div class="overlay">
     <input class="input" bind:value={q} on:input={search} placeholder="Buscar fragancias" />
     <div class="results">
       {#each results as item}
-        <a href={`/fragrances/${item.slug}`}>{item.name}</a>
+        <a href={`/fragrances/${item.slug}`} on:click={close}>{item.name}</a>
       {/each}
     </div>
   </div>

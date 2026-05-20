@@ -25,13 +25,18 @@ type Config struct {
 
 func Load() Config {
 	loadDotEnv(".env")
+	loadDotEnv("backend/.env")
 	hours, _ := strconv.Atoi(env("SESSION_DURATION_HOURS", "8"))
+	databaseURL := env("DATABASE_URL", "")
+	if strings.Contains(databaseURL, "user:pass@host/dbname") {
+		databaseURL = ""
+	}
 	return Config{
 		AppEnv:          env("APP_ENV", "development"),
 		Port:            env("PORT", "8080"),
 		FrontendURL:     env("FRONTEND_URL", "http://localhost:5173"),
 		BackendURL:      env("BACKEND_URL", "http://localhost:8080"),
-		DatabaseURL:     env("DATABASE_URL", ""),
+		DatabaseURL:     databaseURL,
 		SessionSecret:   env("SESSION_SECRET", "dev-secret-change-me-dev-secret-change-me-dev-secret-change-me"),
 		SessionDuration: time.Duration(hours) * time.Hour,
 		MPAccessToken:   os.Getenv("MP_ACCESS_TOKEN"),

@@ -16,8 +16,8 @@ type Handler struct {
 
 func (h Handler) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Get("/", h.List)
 	r.Get("/search", h.Search)
+	r.Get("/", h.List)
 	r.Get("/{slug}", h.Detail)
 	return r
 }
@@ -41,12 +41,13 @@ func (h Handler) List(w http.ResponseWriter, r *http.Request) {
 		MinPrice:      int64Param(q.Get("min_price")),
 		MaxPrice:      int64Param(q.Get("max_price")),
 	}
-	items, err := h.Service.List(r.Context(), filters)
+	result, err := h.Service.List(r.Context(), filters)
 	if err != nil {
 		httpx.Error(w, r, http.StatusInternalServerError, "no se pudo obtener el catálogo")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items, "limit": filters.Limit, "offset": filters.Offset})
+	w.Header().Set("Cache-Control", "public, max-age=60, stale-while-revalidate=300")
+	httpx.WriteJSON(w, http.StatusOK, result)
 }
 
 func (h Handler) Detail(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +60,7 @@ func (h Handler) Detail(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusInternalServerError, "no se pudo obtener la fragancia")
 		return
 	}
+	w.Header().Set("Cache-Control", "public, max-age=60, stale-while-revalidate=300")
 	httpx.WriteJSON(w, http.StatusOK, item)
 }
 

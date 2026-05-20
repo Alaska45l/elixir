@@ -58,3 +58,24 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 	}
 	return nil
 }
+
+func ResolveMigrationsDir() (string, error) {
+	candidates := []string{
+		"migrations",
+		filepath.Join("backend", "migrations"),
+	}
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Dir(exe)
+		candidates = append(candidates,
+			filepath.Join(dir, "migrations"),
+			filepath.Join(dir, "..", "migrations"),
+			filepath.Join(dir, "..", "backend", "migrations"),
+		)
+	}
+	for _, candidate := range candidates {
+		if entries, err := os.ReadDir(candidate); err == nil && len(entries) > 0 {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("migrations directory not found")
+}

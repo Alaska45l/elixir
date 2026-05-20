@@ -88,7 +88,7 @@ export type ShippingZone = {
   estimated_days_max: number;
 };
 
-type ListResponse<T> = { items: T[] };
+export type ListResponse<T> = { items: T[]; total?: number; limit?: number; offset?: number };
 
 export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typeof fetch = fetch): Promise<T> {
   const base = env.PUBLIC_API_URL ?? 'http://localhost:8080';
@@ -104,11 +104,15 @@ export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typ
 }
 
 export async function getProducts(fetcher: typeof fetch = fetch, query = ''): Promise<Product[]> {
+  return (await getProductsResponse(fetcher, query)).items;
+}
+
+export async function getProductsResponse(fetcher: typeof fetch = fetch, query = ''): Promise<ListResponse<Product>> {
   try {
     const data = await apiFetch<ListResponse<Product>>(`/api/products${query}`, undefined, fetcher);
-    return data.items;
+    return data;
   } catch {
-    return demoProducts;
+    return { items: demoProducts, total: demoProducts.length, limit: demoProducts.length, offset: 0 };
   }
 }
 
@@ -122,8 +126,8 @@ export async function getProduct(slug: string, fetcher: typeof fetch = fetch): P
 
 export async function getHomepage(fetcher: typeof fetch = fetch): Promise<HomepageSettings> {
   try {
-    const data = await apiFetch<ListResponse<HomepageSettings>>('/api/admin/homepage', undefined, fetcher);
-    return data.items[0] ?? defaultHomepage;
+    const data = await apiFetch<HomepageSettings>('/api/homepage', undefined, fetcher);
+    return data.hero_heading ? data : defaultHomepage;
   } catch {
     return defaultHomepage;
   }

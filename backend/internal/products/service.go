@@ -6,7 +6,7 @@ type Service struct {
 	Repo Repository
 }
 
-func (s Service) List(ctx context.Context, f ListFilters) ([]Product, error) {
+func (s Service) List(ctx context.Context, f ListFilters) (ListResult, error) {
 	return s.Repo.List(ctx, f)
 }
 

@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { reveal } from '$lib/utils/reveal';
   type FAQ = { question: string; answer: string };
   export let items: FAQ[] = [];
 </script>
 
 <div class="faq">
   {#each items as item}
-    <details>
+    <details use:reveal>
       <summary>{item.question}</summary>
       <p>{item.answer}</p>
     </details>

@@ -3,6 +3,7 @@
   import ImageGallery from '$lib/components/ImageGallery.svelte';
   import NoteCloud from '$lib/components/NoteCloud.svelte';
   import ProductGrid from '$lib/components/ProductGrid.svelte';
+  import RecentlyViewed from '$lib/components/RecentlyViewed.svelte';
   import SizeSelector from '$lib/components/SizeSelector.svelte';
   import WishlistButton from '$lib/components/WishlistButton.svelte';
   import { cart } from '$lib/stores/cart';
@@ -45,12 +46,17 @@
   <div class="panel">
     <div class="topline"><span>{data.product.scent_family} · {data.product.concentration}</span><WishlistButton slug={data.product.slug} /></div>
     <h1 class="display">{data.product.name}</h1>
+    <div class="gold-rule"></div>
     <p class="tagline">{data.product.tagline}</p>
     <p class="price">{selected ? formatARS(selected.price_ars_cents) : 'Agotado'}</p>
     <SizeSelector variants={data.product.variants} {selected} onSelect={(variant) => selected = variant} />
     <NoteCloud top={data.product.top_notes} heart={data.product.heart_notes} base={data.product.base_notes} />
     <div class="buy">
-      <input class="input" type="number" min="1" max={selected?.stock ?? 1} bind:value={qty} />
+      <div class="qty-stepper">
+        <button type="button" on:click={() => qty = Math.max(1, qty - 1)}>−</button>
+        <span>{qty}</span>
+        <button type="button" on:click={() => qty = Math.min(selected?.stock ?? 1, qty + 1)}>+</button>
+      </div>
       <button class="btn primary" type="button" disabled={!selected || selected.stock === 0} on:click={add}>Añadir al carrito</button>
     </div>
   </div>
@@ -58,8 +64,11 @@
 
 <section class="container page-pad">
   <p class="eyebrow">También puede gustarte</p>
+  <div class="gold-rule"></div>
   <ProductGrid products={data.related} />
 </section>
+
+<RecentlyViewed currentSlug={data.product.slug} />
 
 <style>
   .pdp { display: grid; grid-template-columns: 1.05fr .95fr; gap: 64px; align-items: start; }
@@ -69,5 +78,9 @@
   .tagline { color: var(--color-text-muted); font-size: 1.15rem; line-height: 1.7; max-width: 50ch; }
   .price { font-size: 1.5rem; color: var(--color-gold); }
   .buy { display: grid; grid-template-columns: 92px 1fr; gap: 12px; }
+  .qty-stepper { display: flex; border: 1px solid var(--color-border); height: 46px; }
+  .qty-stepper button { width: 44px; background: transparent; border: 0; color: var(--color-text-muted); font-size: 1.3rem; }
+  .qty-stepper button:hover { color: var(--color-gold); }
+  .qty-stepper span { flex: 1; display: grid; place-items: center; border-left: 1px solid var(--color-border); border-right: 1px solid var(--color-border); }
   @media (max-width: 900px) { .pdp { grid-template-columns: 1fr; } .panel { position: static; } }
 </style>

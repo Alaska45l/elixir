@@ -13,9 +13,9 @@ type Repository struct {
 	Pool *pgxpool.Pool
 }
 
-func (r Repository) List(ctx context.Context, f ListFilters) ([]Product, error) {
+func (r Repository) List(ctx context.Context, f ListFilters) (ListResult, error) {
 	if r.Pool == nil {
-		return []Product{}, nil
+		return ListResult{Items: []Product{}, Limit: f.Limit, Offset: f.Offset}, nil
 	}
 	limit := f.Limit
 	if limit <= 0 || limit > 60 {
@@ -51,6 +51,11 @@ func (r Repository) List(ctx context.Context, f ListFilters) ([]Product, error) 
 	if f.MaxPrice > 0 {
 		where = append(where, "EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id=p.id AND v.active=true AND v.price_ars_cents <= "+next(f.MaxPrice)+")")
 	}
+	countArgs := append([]any(nil), args...)
+	var total int
+	if err := r.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM products p WHERE `+strings.Join(where, " AND "), countArgs...).Scan(&total); err != nil {
+		return ListResult{}, err
+	}
 	args = append(args, limit, f.Offset)
 	query := `
 SELECT p.id, p.slug, p.name, COALESCE(p.tagline,''), COALESCE(p.description,''), COALESCE(p.scent_family,''), COALESCE(p.gender_tag,''), COALESCE(p.concentration,''),
@@ -63,26 +68,26 @@ ORDER BY p.display_order ASC, p.created_at DESC
 LIMIT $` + fmt.Sprint(len(args)-1) + ` OFFSET $` + fmt.Sprint(len(args))
 	rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return ListResult{}, err
 	}
 	defer rows.Close()
 	items := []Product{}
 	for rows.Next() {
 		item, err := scanProduct(rows)
 		if err != nil {
-			return nil, err
+			return ListResult{}, err
 		}
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return ListResult{}, err
 	}
 	for i := range items {
 		if err := r.hydrate(ctx, &items[i]); err != nil {
-			return nil, err
+			return ListResult{}, err
 		}
 	}
-	return items, nil
+	return ListResult{Items: items, Total: total, Limit: limit, Offset: f.Offset}, nil
 }
 
 func (r Repository) BySlug(ctx context.Context, slug string) (*Product, error) {

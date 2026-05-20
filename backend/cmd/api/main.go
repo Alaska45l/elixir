@@ -34,6 +34,7 @@ func main() {
 	}
 
 	loginLimiter := middleware.NewLoginLimiter(5, 10*time.Minute)
+	apiLimiter := middleware.NewAPILimiter(60, time.Minute)
 	sessions := admin.SessionManager{Secret: cfg.SessionSecret, Duration: cfg.SessionDuration, Secure: admin.IsSecureEnv(cfg.AppEnv)}
 	discountSvc := discount.Service{Repo: discount.Repository{Pool: pool}}
 	orderSvc := orders.Service{Repo: orders.DBRepository{Pool: pool}, Discount: discountSvc}
@@ -49,15 +50,19 @@ func main() {
 	shippingHandler := shipping.Handler{Service: shipping.Service{Repo: shipping.Repository{Pool: pool}}}
 
 	r := chi.NewRouter()
+	r.Use(middleware.SecurityHeaders)
+	r.Use(middleware.Compress)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestLogger)
 	r.Use(middleware.CORS(cfg.AllowedOrigins))
 	r.Use(middleware.BodyLimit(2 << 20))
 
 	r.Mount("/", health.Handler{Pool: pool, Started: time.Now(), Version: "1.0.0"}.Routes())
+	r.Get("/api/homepage", adminHandler.PublicHomepage)
+	r.With(apiLimiter.Middleware).Get("/api/products/search", productHandler.Search)
 	r.Mount("/api/products", productHandler.Routes())
-	r.Post("/api/cart/validate", orderHandler.ValidateCart)
-	r.Post("/api/discount/validate", discount.Handler{Service: discountSvc}.Validate)
+	r.With(apiLimiter.Middleware).Post("/api/cart/validate", orderHandler.ValidateCart)
+	r.With(apiLimiter.Middleware).Post("/api/discount/validate", discount.Handler{Service: discountSvc}.Validate)
 	r.Post("/api/orders", orderHandler.Create)
 	r.Get("/api/orders/{external_reference}", orderHandler.Status)
 	r.Post("/api/checkout/mercadopago/preference", paymentHandler.CreatePreference)
@@ -66,18 +71,21 @@ func main() {
 	r.Post("/api/contact", contactHandler.Message)
 	r.Post("/api/contact/abandoned-cart", contactHandler.AbandonedCart)
 
-	r.With(loginLimiter.Middleware).Post("/api/admin/login", adminHandler.Login)
-	r.Post("/api/admin/logout", adminHandler.Logout)
+	r.With(middleware.NoStore, loginLimiter.Middleware).Post("/api/admin/login", adminHandler.Login)
+	r.With(middleware.NoStore).Post("/api/admin/logout", adminHandler.Logout)
 	r.Group(func(ar chi.Router) {
+		ar.Use(middleware.NoStore)
 		ar.Use(middleware.AdminSession(sessions))
 		ar.Get("/api/admin/me", adminHandler.Me)
 		ar.Get("/api/admin/metrics", adminHandler.Metrics)
 		ar.Get("/api/admin/products", adminHandler.AdminProducts)
 		ar.Post("/api/admin/products", adminHandler.SaveProduct)
+		ar.Get("/api/admin/products/{id}", adminHandler.AdminProductByID)
 		ar.Put("/api/admin/products/{id}", adminHandler.SaveProduct)
 		ar.Delete("/api/admin/products/{id}", adminHandler.DeleteProduct)
 		ar.Post("/api/admin/products/import", adminHandler.ImportProducts)
 		ar.Get("/api/admin/orders", adminHandler.Orders)
+		ar.Get("/api/admin/orders/export", adminHandler.ExportOrders)
 		ar.Put("/api/admin/orders/{id}", adminHandler.UpdateOrder)
 		ar.Get("/api/admin/discounts", adminHandler.Discounts)
 		ar.Post("/api/admin/discounts", adminHandler.Discounts)

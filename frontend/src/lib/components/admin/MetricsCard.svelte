@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { reveal } from '$lib/utils/reveal';
   export let label: string;
   export let value: string;
 </script>
-<article class="metric">
+<article class="metric" use:reveal>
   <span>{label}</span>
   <strong>{value}</strong>
 </article>

@@ -35,10 +35,10 @@ func (h Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		if data, ok := body["data"].(map[string]any); ok {
-			paymentID = stringFromAny(data["id"])
+			paymentID = stringValue(data["id"])
 		}
 		if paymentID == "" {
-			paymentID = stringFromAny(body["id"])
+			paymentID = stringValue(body["id"])
 		}
 	}
 	if paymentID != "" {
@@ -46,16 +46,5 @@ func (h Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 			slog.Error("mercadopago webhook", "error", err, "request_id", httpx.RequestID(r))
 		}
 	}
-	w.WriteHeader(http.StatusOK)
-}
-
-func stringFromAny(v any) string {
-	switch t := v.(type) {
-	case string:
-		return t
-	case float64:
-		return stringValue(t)
-	default:
-		return ""
-	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

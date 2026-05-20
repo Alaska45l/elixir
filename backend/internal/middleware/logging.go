@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 
@@ -13,11 +14,18 @@ import (
 type statusWriter struct {
 	http.ResponseWriter
 	status int
+	size   int
 }
 
 func (w *statusWriter) WriteHeader(status int) {
 	w.status = status
 	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *statusWriter) Write(b []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(b)
+	w.size += n
+	return n, err
 }
 
 func RequestLogger(next http.Handler) http.Handler {
@@ -31,7 +39,16 @@ func RequestLogger(next http.Handler) http.Handler {
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
 		start := time.Now()
 		next.ServeHTTP(sw, r.WithContext(ctx))
-		slog.Info("request", "id", id, "method", r.Method, "path", r.URL.Path, "status", sw.status, "duration_ms", time.Since(start).Milliseconds())
+		remoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
+		if remoteIP == "" {
+			remoteIP = r.RemoteAddr
+		}
+		args := []any{"id", id, "method", r.Method, "path", r.URL.Path, "status", sw.status, "duration_ms", time.Since(start).Milliseconds(), "size", sw.size, "remote_ip", remoteIP, "user_agent", r.UserAgent()}
+		if sw.status >= 500 {
+			slog.Error("request", args...)
+			return
+		}
+		slog.Info("request", args...)
 	})
 }
 

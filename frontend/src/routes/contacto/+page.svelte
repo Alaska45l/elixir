@@ -27,6 +27,7 @@
   <div>
     <p class="eyebrow">Contacto</p>
     <h1 class="display section-title">Asesoramiento privado</h1>
+    <div class="gold-rule"></div>
     <a class="btn primary" href={`https://wa.me/${env.PUBLIC_WHATSAPP_NUMBER ?? '5491100000000'}`} target="_blank" rel="noreferrer">Consultar por WhatsApp</a>
     <p class="email"><bdo dir="rtl">ra.moc.evisulcxerixile@otcatnoc</bdo></p>
     <AccordionFAQ items={faqs} />

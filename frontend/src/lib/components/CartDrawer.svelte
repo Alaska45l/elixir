@@ -1,8 +1,12 @@
 <script lang="ts">
+  import { page } from '$app/stores';
   import { cart, cartSubtotal } from '$lib/stores/cart';
   import { formatARS } from '$lib/utils/currency';
   export let open = false;
   export let onClose: () => void = () => undefined;
+  let lastPath = '';
+  $: if (lastPath && $page.url.pathname !== lastPath && open) onClose();
+  $: lastPath = $page.url.pathname;
 </script>
 
 {#if open}
@@ -11,7 +15,13 @@
     <button class="close" type="button" on:click={onClose}>Cerrar</button>
     <h2 class="display">Carrito</h2>
     <div class="items">
-      {#each $cart as item}
+      {#if $cart.length === 0}
+        <div class="empty">
+          <p class="eyebrow">Tu carrito está vacío</p>
+          <a class="btn primary" href="/fragrances">Ver fragancias</a>
+        </div>
+      {:else}
+        {#each $cart as item}
         <article>
           <img src={item.image} alt={item.productName} />
           <div>
@@ -25,7 +35,8 @@
             </div>
           </div>
         </article>
-      {/each}
+        {/each}
+      {/if}
     </div>
     <div class="summary">
       <span>Total parcial</span><strong>{formatARS($cartSubtotal)}</strong>
@@ -46,4 +57,5 @@
   .qty { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
   .qty button { background: transparent; color: var(--color-text); border: 1px solid var(--color-border); min-width: 30px; height: 30px; }
   .summary { border-top: 1px solid var(--color-border); padding-top: 16px; display: flex; justify-content: space-between; }
+  .empty { display: grid; gap: 16px; align-content: center; min-height: 220px; }
 </style>

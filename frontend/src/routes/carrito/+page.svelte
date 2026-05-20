@@ -37,6 +37,10 @@
     const summary = $cart.map((i) => `${i.productName} ${i.sizeML}ml x${i.quantity}`).join(', ');
     return `https://wa.me/${env.PUBLIC_WHATSAPP_NUMBER ?? '5491100000000'}?text=${encodeURIComponent(`Hola, quiero consultar por mi carrito: ${summary}`)}`;
   }
+  function updateQuantity(event: Event, variantId: string) {
+    const input = event.currentTarget as HTMLInputElement;
+    cart.setQuantity(variantId, Number(input.value));
+  }
 </script>
 
 <svelte:head><title>Carrito | ELIXIR Exclusive</title></svelte:head>
@@ -44,13 +48,21 @@
 <section class="container page-pad">
   <p class="eyebrow">Finalizar compra</p>
   <h1 class="display section-title">Carrito</h1>
+  <div class="gold-rule"></div>
+  {#if $cart.length === 0}
+    <div class="empty">
+      <p class="eyebrow">Tu carrito está vacío</p>
+      <h2 class="display">Explorá la colección.</h2>
+      <a class="btn primary" href="/fragrances">Ver fragancias</a>
+    </div>
+  {:else}
   <div class="cart-page">
     <div class="lines">
       {#each $cart as item}
         <article>
           <img src={item.image} alt={item.productName} />
           <div><h2>{item.productName}</h2><p>{item.sizeML}ml · {formatARS(item.unitPriceCents)}</p></div>
-          <input class="input" type="number" min="1" bind:value={item.quantity} on:change={() => cart.setQuantity(item.variantId, item.quantity)} />
+          <input class="input" type="number" min="1" value={item.quantity} on:input={(event) => updateQuantity(event, item.variantId)} />
           <strong>{formatARS(item.quantity * item.unitPriceCents)}</strong>
           <button type="button" on:click={() => cart.remove(item.variantId)}>Quitar</button>
         </article>
@@ -68,6 +80,7 @@
       <a class="btn" href={wa()} target="_blank" rel="noreferrer">Consultar por WhatsApp</a>
     </form>
   </div>
+  {/if}
 </section>
 
 <style>
@@ -83,5 +96,7 @@
   .discount { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
   .totals { display: grid; grid-template-columns: 1fr auto; gap: 10px; color: var(--color-text-muted); border-top: 1px solid var(--color-border); padding-top: 16px; }
   .totals strong { color: var(--color-gold); font-size: 1.35rem; }
+  .empty { min-height: 50vh; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+  .empty h2 { font-size: clamp(2.8rem, 6vw, 5rem); margin: 0; }
   @media (max-width: 920px) { .cart-page, article { grid-template-columns: 1fr; } }
 </style>

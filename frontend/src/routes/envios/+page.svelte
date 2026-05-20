@@ -15,6 +15,7 @@
 <section class="container page-pad">
   <p class="eyebrow">Envíos</p>
   <h1 class="display section-title">Envíos a todo el país</h1>
+  <div class="gold-rule"></div>
   <table class="table">
     <thead><tr><th>Zona</th><th>Costo</th><th>Tiempo estimado</th></tr></thead>
     <tbody>{#each data.zones as zone}<tr><td>{zone.zone_name}</td><td>{formatARS(zone.base_cost_cents)}</td><td>{zone.estimated_days_min} a {zone.estimated_days_max} días</td></tr>{/each}</tbody>

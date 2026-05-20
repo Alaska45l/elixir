@@ -21,7 +21,11 @@ func main() {
 	if pool != nil {
 		defer pool.Close()
 	}
-	if err := db.RunMigrations(context.Background(), pool, "migrations"); err != nil {
+	dir, err := db.ResolveMigrationsDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := db.RunMigrations(context.Background(), pool, dir); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("migrations applied")

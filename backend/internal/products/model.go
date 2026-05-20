@@ -57,6 +57,13 @@ type ListFilters struct {
 	Offset        int
 }
 
+type ListResult struct {
+	Items  []Product `json:"items"`
+	Total  int       `json:"total"`
+	Limit  int       `json:"limit"`
+	Offset int       `json:"offset"`
+}
+
 type SearchResult struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`

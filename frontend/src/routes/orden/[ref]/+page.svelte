@@ -24,11 +24,11 @@
 
 <section class="container page-pad confirmation">
   {#if status === 'paid'}
-    <div class="icon">✓</div><h1 class="display">¡Gracias por tu compra!</h1><p>Tu orden {order?.external_reference} fue aprobada. Prepararemos el despacho estimado dentro de las próximas 24 a 48 horas hábiles.</p>
+    <div class="icon">✓</div><h1 class="display">¡Gracias por tu compra!</h1><div class="gold-rule"></div><p>Tu orden {order?.external_reference} fue aprobada. Prepararemos el despacho estimado dentro de las próximas 24 a 48 horas hábiles.</p>
   {:else if status === 'failed'}
-    <div class="icon error">×</div><h1 class="display">El pago no se completó.</h1><p>Podés volver al carrito e intentar nuevamente.</p><a class="btn primary" href="/carrito">Seguir comprando</a>
+    <div class="icon error">×</div><h1 class="display">El pago no se completó.</h1><div class="gold-rule"></div><p>Podés volver al carrito e intentar nuevamente.</p><a class="btn primary" href="/carrito">Seguir comprando</a>
   {:else}
-    <div class="icon">◷</div><h1 class="display">Tu pago está siendo procesado.</h1><p>Estamos verificando el estado de la orden {data.ref}. Esta página se actualizará automáticamente.</p>
+    <div class="icon">◷</div><h1 class="display">Tu pago está siendo procesado.</h1><div class="gold-rule"></div><p>Estamos verificando el estado de la orden {data.ref}. Esta página se actualizará automáticamente.</p>
   {/if}
   {#if order}
     <div class="summary"><span>Total</span><strong>{formatARS(order.total_ars_cents)}</strong><span>Estado</span><strong>{order.status}</strong></div>

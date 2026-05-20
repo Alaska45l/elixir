@@ -21,6 +21,10 @@ func NewLoginLimiter(limit int, window time.Duration) *LoginLimiter {
 	return &LoginLimiter{attempts: map[string][]time.Time{}, limit: limit, window: window}
 }
 
+func NewAPILimiter(limit int, window time.Duration) *LoginLimiter {
+	return NewLoginLimiter(limit, window)
+}
+
 func (l *LoginLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
