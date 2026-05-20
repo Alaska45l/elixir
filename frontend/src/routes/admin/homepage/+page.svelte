@@ -2,8 +2,15 @@
   import { apiFetch, defaultHomepage } from '$lib/api/client';
   import type { HomepageSettings } from '$lib/api/client';
   import { onMount } from 'svelte';
-  let form: HomepageSettings = defaultHomepage;
-  onMount(async () => { const res = await apiFetch<{items: HomepageSettings[]}>('/api/admin/homepage'); form = res.items[0] ?? defaultHomepage; });
+  let form: HomepageSettings = { ...defaultHomepage };
+  onMount(async () => {
+    try {
+      const res = await apiFetch<{items: HomepageSettings[]}>('/api/admin/homepage');
+      form = res.items[0] ?? { ...defaultHomepage };
+    } catch {
+      form = { ...defaultHomepage };
+    }
+  });
   async function save(){ await apiFetch('/api/admin/homepage',{method:'PUT',body:JSON.stringify(form)}); }
 </script>
 <h1 class="display section-title">Homepage</h1>

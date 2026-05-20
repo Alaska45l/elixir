@@ -22,5 +22,7 @@
   .notes { display: grid; gap: 18px; }
   h3 { margin: 0 0 10px; color: var(--color-text-muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .12em; }
   section div { display: flex; flex-wrap: wrap; gap: 8px; }
-  span { border: 1px solid var(--color-border); color: var(--color-text); padding: 7px 10px; }
+  section div span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--color-border); color: var(--color-text); padding: 5px 12px; font-size: .78rem; letter-spacing: .04em; transition: border-color .2s ease, color .2s ease; }
+  section div span::before { content: ''; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: var(--color-gold); opacity: .6; flex-shrink: 0; }
+  section div span:hover { border-color: color-mix(in srgb, var(--color-gold) 50%, transparent); color: var(--color-gold); }
 </style>

@@ -15,7 +15,8 @@
 
 <style>
   .sizes { display: flex; flex-wrap: wrap; gap: 10px; }
-  button { min-width: 98px; height: 44px; border: 1px solid var(--color-border); background: transparent; color: var(--color-text); }
-  button.active { border-color: var(--color-gold); color: var(--color-gold); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
+  button { min-width: 98px; height: 44px; border: 1px solid var(--color-border); background: transparent; color: var(--color-text-muted); font-size: .85rem; letter-spacing: .04em; transition: border-color .2s ease, background .2s ease, color .2s ease; }
+  button:hover:not(:disabled):not(.active) { border-color: color-mix(in srgb, var(--color-gold) 50%, transparent); color: var(--color-text); }
+  button.active { background: var(--color-gold); border-color: var(--color-gold); color: var(--color-bg); font-weight: 600; }
+  button:disabled { opacity: .35; cursor: not-allowed; }
 </style>

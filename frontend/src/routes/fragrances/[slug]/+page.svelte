@@ -3,6 +3,7 @@
   import ImageGallery from '$lib/components/ImageGallery.svelte';
   import NoteCloud from '$lib/components/NoteCloud.svelte';
   import ProductGrid from '$lib/components/ProductGrid.svelte';
+  import QuantityStepper from '$lib/components/QuantityStepper.svelte';
   import RecentlyViewed from '$lib/components/RecentlyViewed.svelte';
   import SizeSelector from '$lib/components/SizeSelector.svelte';
   import WishlistButton from '$lib/components/WishlistButton.svelte';
@@ -13,6 +14,7 @@
   export let data: PageData;
   let selected = data.product.variants.find((v) => v.stock > 0) ?? data.product.variants[0];
   let qty = 1;
+  $: if (selected) qty = Math.min(qty, selected.stock || 1);
   if (browser) {
     const key = 'elixir_recent';
     const existing = JSON.parse(localStorage.getItem(key) ?? '[]') as string[];
@@ -52,11 +54,7 @@
     <SizeSelector variants={data.product.variants} {selected} onSelect={(variant) => selected = variant} />
     <NoteCloud top={data.product.top_notes} heart={data.product.heart_notes} base={data.product.base_notes} />
     <div class="buy">
-      <div class="qty-stepper">
-        <button type="button" on:click={() => qty = Math.max(1, qty - 1)}>−</button>
-        <span>{qty}</span>
-        <button type="button" on:click={() => qty = Math.min(selected?.stock ?? 1, qty + 1)}>+</button>
-      </div>
+      <QuantityStepper value={qty} min={1} max={selected?.stock ?? 1} onchange={(v) => qty = v} />
       <button class="btn primary" type="button" disabled={!selected || selected.stock === 0} on:click={add}>Añadir al carrito</button>
     </div>
   </div>
@@ -77,10 +75,6 @@
   h1 { font-size: clamp(3.2rem, 7vw, 6.8rem); line-height: .86; margin: 0; }
   .tagline { color: var(--color-text-muted); font-size: 1.15rem; line-height: 1.7; max-width: 50ch; }
   .price { font-size: 1.5rem; color: var(--color-gold); }
-  .buy { display: grid; grid-template-columns: 92px 1fr; gap: 12px; }
-  .qty-stepper { display: flex; border: 1px solid var(--color-border); height: 46px; }
-  .qty-stepper button { width: 44px; background: transparent; border: 0; color: var(--color-text-muted); font-size: 1.3rem; }
-  .qty-stepper button:hover { color: var(--color-gold); }
-  .qty-stepper span { flex: 1; display: grid; place-items: center; border-left: 1px solid var(--color-border); border-right: 1px solid var(--color-border); }
+  .buy { display: grid; grid-template-columns: 120px 1fr; gap: 12px; }
   @media (max-width: 900px) { .pdp { grid-template-columns: 1fr; } .panel { position: static; } }
 </style>

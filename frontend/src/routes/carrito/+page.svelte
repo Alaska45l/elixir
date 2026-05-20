@@ -39,7 +39,10 @@
   }
   function updateQuantity(event: Event, variantId: string) {
     const input = event.currentTarget as HTMLInputElement;
-    cart.setQuantity(variantId, Number(input.value));
+    const next = Number(input.value);
+    const clamped = Math.max(1, Math.min(99, Number.isFinite(next) ? next : 1));
+    cart.setQuantity(variantId, clamped);
+    input.value = String(clamped);
   }
 </script>
 
@@ -62,7 +65,7 @@
         <article>
           <img src={item.image} alt={item.productName} />
           <div><h2>{item.productName}</h2><p>{item.sizeML}ml · {formatARS(item.unitPriceCents)}</p></div>
-          <input class="input" type="number" min="1" value={item.quantity} on:input={(event) => updateQuantity(event, item.variantId)} />
+          <input class="input" type="number" min="1" max="99" value={item.quantity} on:input={(event) => updateQuantity(event, item.variantId)} />
           <strong>{formatARS(item.quantity * item.unitPriceCents)}</strong>
           <button type="button" on:click={() => cart.remove(item.variantId)}>Quitar</button>
         </article>
