@@ -31,23 +31,127 @@
 </article>
 
 <style>
-  .product { display: grid; gap: 16px; transition: transform .3s ease, filter .3s ease; }
-  .product:hover { transform: translateY(-4px); filter: drop-shadow(var(--shadow-gold-hover)); }
-  .media { position: relative; aspect-ratio: 3 / 4; overflow: hidden; background: var(--color-surface); }
-  .media::before { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40%; background: linear-gradient(to top, color-mix(in srgb, var(--color-bg) 45%, transparent) 0%, transparent 100%); z-index: 1; pointer-events: none; }
-  .media::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--color-bg) 0%, transparent); transition: background .45s ease; }
-  .product:hover .media::after { background: color-mix(in srgb, var(--color-bg) 8%, transparent); }
-  img { width: 100%; height: 100%; object-fit: cover; transition: opacity .45s ease, transform .65s ease; }
-  .media:hover img.primary { transform: scale(1.04); }
-  .secondary { position: absolute; inset: 0; opacity: 0; transition: opacity .45s ease, transform .65s ease; }
-  .media:hover .primary { opacity: 0; }
-  .media:hover .secondary { opacity: 1; transform: scale(1.04); }
-  .info { display: flex; justify-content: space-between; gap: 18px; align-items: start; }
-  h3 { margin: 0 0 6px; font-size: clamp(1.4rem, 3vw, 1.9rem); line-height: .92; letter-spacing: -.01em; transition: color .2s; }
-  .product:hover .info h3 { color: var(--color-gold); }
-  p { margin: 0; color: var(--color-text-muted); min-height: 42px; }
-  .meta { display: flex; justify-content: space-between; color: var(--color-text-muted); }
-  .meta a { color: var(--color-gold); }
-  .badge { position: absolute; left: 12px; top: 12px; color: var(--color-gold); border: 1px solid color-mix(in srgb, var(--color-gold) 40%, transparent); background: color-mix(in srgb, var(--color-bg) 85%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); padding: 5px 10px; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; z-index: 2; }
-  .badge.empty { color: var(--color-danger-soft); border-color: color-mix(in srgb, var(--color-danger-soft) 40%, transparent); }
+  .product {
+    display: grid;
+    gap: 0;
+    cursor: pointer;
+  }
+
+  .media {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--color-bg) 82%, var(--color-surface));
+  }
+
+  .media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--color-bg) 0%, transparent);
+    transition: background 0.5s ease;
+    pointer-events: none;
+  }
+
+  .product:hover .media::after {
+    background: color-mix(in srgb, var(--color-bg) 6%, transparent);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease;
+    transform-origin: center bottom;
+  }
+
+  .media:hover img.primary {
+    transform: scale(1.06);
+  }
+
+  .secondary {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .media:hover .primary {
+    opacity: 0;
+  }
+
+  .media:hover .secondary {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+
+  .badge {
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--color-gold);
+    background: var(--color-bg);
+    padding: 5px 10px;
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    z-index: 2;
+    border-bottom: 1px solid var(--color-border);
+    border-right: 1px solid var(--color-border);
+  }
+
+  .badge.empty {
+    color: var(--color-danger-soft);
+  }
+
+  .info {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 0 0;
+    border-top: 1px solid var(--color-border);
+    margin-top: 12px;
+  }
+
+  h3 {
+    margin: 0 0 4px;
+    font-size: clamp(1.1rem, 2.5vw, 1.45rem);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    transition: color 0.2s;
+  }
+
+  .product:hover h3 {
+    color: var(--color-gold);
+  }
+
+  p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    max-width: 28ch;
+  }
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0 0;
+    gap: 12px;
+  }
+
+  .meta span {
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+  }
+
+  .meta a {
+    color: var(--color-gold);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
 </style>

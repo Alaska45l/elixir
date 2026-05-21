@@ -158,12 +158,12 @@ export const defaultHomepage: HomepageSettings = {
 };
 
 export const demoProducts: Product[] = [
-  makeProduct('nocturno-oud', 'Nocturno Oud', 'Oud seco, rosa negra y cuero limpio', 'Amaderado', 8900000, 4, 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=900&q=85'),
-  makeProduct('ambar-de-recoleta', 'Ámbar de Recoleta', 'Ámbar cálido, vainilla sobria y incienso', 'Oriental', 7600000, 12, 'https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=900&q=85'),
-  makeProduct('flor-de-noche', 'Flor de Noche', 'Jazmín oscuro, iris y almizcle limpio', 'Floral', 8200000, 3, 'https://images.unsplash.com/photo-1547887538-e3a2f32cb1cc?auto=format&fit=crop&w=900&q=85'),
-  makeProduct('citrino-frio', 'Citrino Frío', 'Bergamota helada, neroli y cedro blanco', 'Cítrico', 6900000, 8, 'https://images.unsplash.com/photo-1600612253971-422e7f7faeb6?auto=format&fit=crop&w=900&q=85'),
-  makeProduct('gourmand-reserva', 'Gourmand Reserva', 'Tonka, cacao amargo y sándalo', 'Gourmand', 9300000, 2, 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=900&q=85'),
-  makeProduct('fresco-sur', 'Fresco Sur', 'Mate verde, pomelo y vetiver', 'Fresco', 7100000, 0, 'https://images.unsplash.com/photo-1585386959984-a4155223168f?auto=format&fit=crop&w=900&q=85')
+  makeProduct('nocturno-oud', 'Nocturno Oud', 'Oud seco, rosa negra y cuero limpio', 'Amaderado', 8900000, 4, 'https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=900&q=90'),
+  makeProduct('ambar-de-recoleta', 'Ámbar de Recoleta', 'Ámbar cálido, vainilla sobria y incienso', 'Oriental', 7600000, 12, 'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?auto=format&fit=crop&w=900&q=90'),
+  makeProduct('flor-de-noche', 'Flor de Noche', 'Jazmín oscuro, iris y almizcle limpio', 'Floral', 8200000, 3, 'https://images.unsplash.com/photo-1616604426203-b9baf4ac29d2?auto=format&fit=crop&w=900&q=90'),
+  makeProduct('citrino-frio', 'Citrino Frío', 'Bergamota helada, neroli y cedro blanco', 'Cítrico', 6900000, 8, 'https://images.unsplash.com/photo-1609541657971-7a22e8e76219?auto=format&fit=crop&w=900&q=90'),
+  makeProduct('gourmand-reserva', 'Gourmand Reserva', 'Tonka, cacao amargo y sándalo', 'Gourmand', 9300000, 2, 'https://images.unsplash.com/photo-1590736969955-71cc94901144?auto=format&fit=crop&w=900&q=90'),
+  makeProduct('fresco-sur', 'Fresco Sur', 'Mate verde, pomelo y vetiver', 'Fresco', 7100000, 0, 'https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=900&q=90')
 ];
 
 function makeProduct(slug: string, name: string, tagline: string, family: string, price: number, stock: number, image: string): Product {

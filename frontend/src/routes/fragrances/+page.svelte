@@ -5,7 +5,11 @@
   import type { PageData } from './$types';
   export let data: PageData;
   let searchOpen = false;
+  let filtersOpen = false;
+  let innerWidth = 0;
+
   $: params = new URLSearchParams(data.search);
+
   function pageHref(offset: number) {
     const next = new URLSearchParams(data.search);
     next.set('limit', String(data.limit));
@@ -13,6 +17,8 @@
     return `/fragrances?${next.toString()}`;
   }
 </script>
+
+<svelte:window bind:innerWidth />
 
 <svelte:head>
   <title>Catálogo | ELIXIR Exclusive</title>
@@ -28,8 +34,14 @@
 
 <SearchOverlay open={searchOpen} on:close={() => searchOpen = false} />
 
+<section class="container filter-toggle">
+  <button class="btn" type="button" on:click={() => filtersOpen = !filtersOpen}>
+    {filtersOpen ? 'Ocultar filtros' : 'Filtros'}
+  </button>
+</section>
+
 <section class="container catalog">
-  <FilterSidebar {params} />
+  <FilterSidebar {params} visible={filtersOpen || innerWidth > 860} />
   <div>
     <ProductGrid products={data.products} />
     {#if data.total > data.limit}
@@ -46,8 +58,12 @@
 <style>
   .catalog-head { padding-bottom: 28px; }
   .catalog-head .btn { margin-top: -12px; }
+  .filter-toggle { display: none; margin-bottom: 20px; }
   .catalog { display: grid; grid-template-columns: 240px 1fr; gap: 44px; align-items: start; }
   .pagination { display: flex; gap: 10px; margin-top: 44px; }
   .pagination .active { border-color: var(--color-gold); color: var(--color-gold); }
-  @media (max-width: 860px) { .catalog { grid-template-columns: 1fr; } }
+  @media (max-width: 860px) {
+    .filter-toggle { display: block; }
+    .catalog { grid-template-columns: 1fr; }
+  }
 </style>

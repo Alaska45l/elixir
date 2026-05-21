@@ -1,5 +1,6 @@
 <script lang="ts">
   import '../app.css';
+  import AnnouncementBar from '$lib/components/AnnouncementBar.svelte';
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import CartDrawer from '$lib/components/CartDrawer.svelte';
@@ -10,6 +11,7 @@
   $: isAdmin = $page.url.pathname.startsWith('/admin');
 </script>
 
+{#if !isAdmin}<AnnouncementBar />{/if}
 {#if !isAdmin}<Header onCart={() => cartOpen = true} />{/if}
 <div class:fading={$navigating}><slot /></div>
 {#if !isAdmin}<Footer />{/if}
