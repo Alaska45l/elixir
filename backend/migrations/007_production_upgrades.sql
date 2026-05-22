@@ -3,8 +3,8 @@ ALTER TABLE product_variants
 
 CREATE TABLE IF NOT EXISTS site_settings (
   id INTEGER PRIMARY KEY DEFAULT 1,
-  footer_instagram_url TEXT DEFAULT '',
-  footer_tiktok_url TEXT DEFAULT '',
+  footer_instagram_url TEXT DEFAULT 'https://www.instagram.com/',
+  footer_tiktok_url TEXT DEFAULT 'https://www.tiktok.com/',
   footer_whatsapp_url TEXT DEFAULT '',
   announcement_bar_text TEXT DEFAULT 'Envíos a todo el país · Empaque discreto · Seguimiento personalizado',
   announcement_bar_active BOOLEAN DEFAULT true,
@@ -35,8 +35,8 @@ INSERT INTO site_settings (
   navbar_product_categories
 ) VALUES (
   1,
-  '',
-  '',
+  'https://www.instagram.com/',
+  'https://www.tiktok.com/',
   '',
   'Envíos a todo el país · Empaque discreto · Seguimiento personalizado',
   true,

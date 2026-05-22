@@ -209,8 +209,8 @@ export const defaultHomepage: HomepageSettings = {
 };
 
 export const defaultSettings: SiteSettings = {
-  footer_instagram_url: '',
-  footer_tiktok_url: '',
+  footer_instagram_url: 'https://www.instagram.com/',
+  footer_tiktok_url: 'https://www.tiktok.com/',
   footer_whatsapp_url: '',
   announcement_bar_text: 'Envíos a todo el país · Empaque discreto · Seguimiento personalizado',
   announcement_bar_active: true,

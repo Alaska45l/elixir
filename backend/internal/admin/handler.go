@@ -553,11 +553,18 @@ func (h Handler) loadSiteSettings(r *http.Request) (siteSettings, error) {
 	if err != nil {
 		return s, err
 	}
+	defaults := defaultSiteSettings()
+	if strings.TrimSpace(s.FooterInstagramURL) == "" {
+		s.FooterInstagramURL = defaults.FooterInstagramURL
+	}
+	if strings.TrimSpace(s.FooterTikTokURL) == "" {
+		s.FooterTikTokURL = defaults.FooterTikTokURL
+	}
 	if err := json.Unmarshal(faqRaw, &s.FAQItems); err != nil {
-		s.FAQItems = defaultSiteSettings().FAQItems
+		s.FAQItems = defaults.FAQItems
 	}
 	if err := json.Unmarshal(navRaw, &s.NavbarProductCategories); err != nil {
-		s.NavbarProductCategories = defaultSiteSettings().NavbarProductCategories
+		s.NavbarProductCategories = defaults.NavbarProductCategories
 	}
 	return s, nil
 }
@@ -758,6 +765,8 @@ type navItem struct {
 
 func defaultSiteSettings() siteSettings {
 	return siteSettings{
+		FooterInstagramURL:    "https://www.instagram.com/",
+		FooterTikTokURL:       "https://www.tiktok.com/",
 		AnnouncementBarText:   "Envíos a todo el país · Empaque discreto · Seguimiento personalizado",
 		AnnouncementBarActive: true,
 		AboutTitle:            "ELIXIR Exclusive",

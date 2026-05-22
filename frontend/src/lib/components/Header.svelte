@@ -22,8 +22,10 @@
   let closeTimer: ReturnType<typeof setTimeout> | undefined;
 
   $: activePath = $page.url.pathname;
-  $: panelTitle = activePanel === 'productos' ? 'Productos' : activePanel === 'contacto' ? 'Contacto' : 'Nosotros';
+  $: panelTitle = activePanel === 'productos' ? 'Productos' : 'Contacto';
   $: panelLinks = activePanel === 'productos' ? settings.navbar_product_categories : activePanel === 'contacto' ? contactLinks : [];
+  $: instagramHref = settings.footer_instagram_url || 'https://www.instagram.com/';
+  $: tiktokHref = settings.footer_tiktok_url || 'https://www.tiktok.com/';
 
   function isActive(href: string): boolean {
     const path = href.split('?')[0];
@@ -83,42 +85,34 @@
   </button>
 
   <div class="mega-panel" class:open={activePanel !== ''} role="region" aria-label="Menú desplegable" on:mouseenter={() => clearTimeout(closeTimer)} on:mouseleave={scheduleClose}>
-    <div class="mega-inner">
-      <section class="mega-about" aria-label="Nosotros">
-        <p class="panel-label">ELIXIR Exclusive</p>
-        <h2>{settings.about_title}</h2>
-        <p>{settings.about_description}</p>
-        {#if settings.about_location}<span>{settings.about_location}</span>{/if}
-      </section>
+    <div class="mega-inner" class:nosotros-panel={activePanel === 'nosotros'}>
+      {#if activePanel === 'nosotros'}
+        <section class="mega-about" aria-label="Nosotros">
+          <p class="panel-label">Nosotros</p>
+          <h2>{settings.about_title}</h2>
+          <p>{settings.about_description}</p>
+          {#if settings.about_location}<span>{settings.about_location}</span>{/if}
+        </section>
 
-      <section class="mega-links" aria-label={panelTitle}>
-        <p class="panel-label">{panelTitle}</p>
-        {#if panelLinks.length}
-          {#each panelLinks as item}
-            <a href={item.href} on:click={() => activePanel = ''}>{item.label}</a>
-          {/each}
-        {:else}
-          {#if settings.about_phone}<a href={`tel:${settings.about_phone}`}>{settings.about_phone}</a>{/if}
-          {#if settings.footer_whatsapp_url}<a href={settings.footer_whatsapp_url} target="_blank" rel="noreferrer">WhatsApp</a>{/if}
-          <a href="/contacto" on:click={() => activePanel = ''}>Contacta con nosotros</a>
-        {/if}
-      </section>
-
-      <section class="mega-social" aria-label="Redes sociales">
-        <p class="panel-label">Social</p>
-        {#if settings.footer_instagram_url}
-          <a href={settings.footer_instagram_url} target="_blank" rel="noreferrer">
+        <section class="mega-social" aria-label="Redes sociales">
+          <p class="panel-label">Social</p>
+          <a href={instagramHref} target="_blank" rel="noreferrer">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="5" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3.4" stroke="currentColor" stroke-width="1.6"/><circle cx="17" cy="7" r="1" fill="currentColor"/></svg>
             Instagram
           </a>
-        {/if}
-        {#if settings.footer_tiktok_url}
-          <a href={settings.footer_tiktok_url} target="_blank" rel="noreferrer">
+          <a href={tiktokHref} target="_blank" rel="noreferrer">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 4v10.2a3.8 3.8 0 1 1-3.8-3.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 4c.6 2.8 2.2 4.5 5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             TikTok
           </a>
-        {/if}
-      </section>
+        </section>
+      {:else}
+        <section class="mega-links" aria-label={panelTitle}>
+          <p class="panel-label">{panelTitle}</p>
+          {#each panelLinks as item}
+            <a href={item.href} on:click={() => activePanel = ''}>{item.label}</a>
+          {/each}
+        </section>
+      {/if}
     </div>
   </div>
 </header>
@@ -140,7 +134,8 @@
   .menu-group { padding: 26px 0; }
   .mega-panel { position: absolute; top: 100%; left: 50%; width: 100vw; margin-left: -50vw; background: color-mix(in srgb, var(--color-surface) 94%, rgba(232,224,208,.12)); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); box-shadow: 0 28px 70px rgba(0,0,0,.32); opacity: 0; visibility: hidden; transform: translateY(-18px); pointer-events: none; transition: opacity .2s ease, transform .26s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .26s; }
   .mega-panel.open { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; transition-delay: 0s; }
-  .mega-inner { width: min(100%, 1440px); margin: 0 auto; min-height: 236px; padding: 34px max(24px, 5vw) 38px; display: grid; grid-template-columns: minmax(280px, 1.15fr) minmax(260px, .9fr) minmax(210px, .6fr); gap: clamp(36px, 8vw, 120px); align-items: start; }
+  .mega-inner { width: min(100%, 1440px); margin: 0 auto; min-height: 236px; padding: 34px max(24px, 5vw) 38px; display: grid; grid-template-columns: minmax(280px, 420px); gap: clamp(36px, 8vw, 120px); align-items: start; }
+  .mega-inner.nosotros-panel { grid-template-columns: minmax(320px, 1fr) minmax(210px, .45fr); }
   .panel-label { margin: 0 0 20px; color: var(--color-gold); font-size: .68rem; text-transform: uppercase; letter-spacing: .16em; font-weight: 700; }
   .mega-about h2 { margin: 0 0 18px; font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3.7rem); line-height: .95; font-weight: 600; }
   .mega-about p:not(.panel-label) { margin: 0 0 26px; color: var(--color-text); max-width: 46ch; line-height: 1.55; font-size: .98rem; }
