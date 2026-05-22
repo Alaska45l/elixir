@@ -3,18 +3,12 @@
   import AccordionFAQ from '$lib/components/AccordionFAQ.svelte';
   import { apiFetch } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
+  import type { PageData } from './$types';
+  export let data: PageData;
   let name = '';
   let email = '';
   let subject = 'Consulta general';
   let message = '';
-  const faqs = [
-    { question: '¿Los perfumes son originales?', answer: 'Sí. ELIXIR Exclusive comercializa fragancias seleccionadas y documentadas.' },
-    { question: '¿Qué medios de pago aceptan?', answer: 'El checkout opera en ARS mediante MercadoPago.' },
-    { question: '¿Hacen envíos?', answer: 'Sí, a CABA, GBA e Interior con seguimiento.' },
-    { question: '¿Puedo consultar por WhatsApp?', answer: 'Sí. Recomendamos WhatsApp para asesoramiento rápido.' },
-    { question: '¿Qué pasa si una fragancia está agotada?', answer: 'Podés escribirnos para lista de reposición.' },
-    { question: '¿Cómo aplico un descuento?', answer: 'Ingresá el código en el carrito y presioná Aplicar.' }
-  ];
   async function submit() {
     await apiFetch('/api/contact', { method: 'POST', body: JSON.stringify({ name, email, subject, message }) });
     toast.push('Mensaje enviado');
@@ -30,7 +24,7 @@
     <div class="gold-rule"></div>
     <a class="btn primary" href={`https://wa.me/${env.PUBLIC_WHATSAPP_NUMBER ?? '5491100000000'}`} target="_blank" rel="noreferrer">Consultar por WhatsApp</a>
     <p class="email"><bdo dir="rtl">ra.moc.evisulcxerixile@otcatnoc</bdo></p>
-    <AccordionFAQ items={faqs} />
+    <AccordionFAQ items={data.settings.faq_items} />
   </div>
   <form on:submit|preventDefault={submit}>
     <label class="field"><span>Nombre</span><input class="input" required bind:value={name} /></label>

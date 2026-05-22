@@ -13,6 +13,7 @@
     <a href="/admin/ordenes">Órdenes</a>
     <a href="/admin/descuentos">Descuentos</a>
     <a href="/admin/homepage">Homepage</a>
+    <a href="/admin/configuracion">Configuración</a>
     <a href="/admin/mensajes">Mensajes</a>
     <button type="button" on:click={logout}>Salir</button>
   </aside>
@@ -26,5 +27,5 @@
   a, button { color: var(--color-text-muted); background: transparent; border: 0; text-align: left; padding: 0; }
   a:hover, button:hover { color: var(--color-gold); }
   main { padding: 36px; overflow: auto; }
-  @media (max-width: 800px) { .admin { grid-template-columns: 1fr; } aside { position: static; grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 800px) { .admin { grid-template-columns: 1fr; } aside { position: static; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); } }
 </style>

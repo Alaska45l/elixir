@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { env } from '$env/dynamic/public';
   import '../app.css';
   import AnnouncementBar from '$lib/components/AnnouncementBar.svelte';
   import Header from '$lib/components/Header.svelte';
@@ -7,14 +8,21 @@
   import ScrollTop from '$lib/components/ScrollTop.svelte';
   import Toast from '$lib/components/Toast.svelte';
   import { navigating, page } from '$app/stores';
+  import type { LayoutData } from './$types';
+  export let data: LayoutData;
   let cartOpen = false;
   $: isAdmin = $page.url.pathname.startsWith('/admin');
+  $: siteUrl = (env.PUBLIC_SITE_URL ?? 'http://localhost:5173').replace(/\/$/, '');
 </script>
 
-{#if !isAdmin}<AnnouncementBar />{/if}
-{#if !isAdmin}<Header onCart={() => cartOpen = true} />{/if}
+<svelte:head>
+  <link rel="canonical" href={`${siteUrl}${$page.url.pathname}`} />
+</svelte:head>
+
+{#if !isAdmin}<AnnouncementBar settings={data.settings} />{/if}
+{#if !isAdmin}<Header settings={data.settings} onCart={() => cartOpen = true} />{/if}
 <div class:fading={$navigating}><slot /></div>
-{#if !isAdmin}<Footer />{/if}
+{#if !isAdmin}<Footer settings={data.settings} />{/if}
 <CartDrawer open={cartOpen} onClose={() => cartOpen = false} />
 {#if !isAdmin}<ScrollTop />{/if}
 <Toast />

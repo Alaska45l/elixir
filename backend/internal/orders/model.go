@@ -24,6 +24,7 @@ type ValidatedItem struct {
 	SubtotalARSCents  int64  `json:"subtotal_ars_cents"`
 	AvailableStock    int    `json:"available_stock"`
 	CorrectedPrice    bool   `json:"corrected_price"`
+	WeightGrams       int    `json:"weight_grams"`
 }
 
 type CartValidationResult struct {

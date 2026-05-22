@@ -8,6 +8,7 @@ export type CartItem = {
   image: string;
   sizeML: number;
   unitPriceCents: number;
+  weightGrams?: number;
   quantity: number;
 };
 

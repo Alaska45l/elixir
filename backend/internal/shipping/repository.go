@@ -2,6 +2,7 @@ package shipping
 
 import (
 	"context"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -39,4 +40,63 @@ func (r Repository) List(ctx context.Context) ([]Zone, error) {
 		out = append(out, z)
 	}
 	return out, rows.Err()
+}
+
+func (r Repository) OwnFleetQuote(ctx context.Context, req QuoteRequest) ([]QuoteOption, error) {
+	zones, err := r.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := []QuoteOption{}
+	for _, zone := range zones {
+		if !matchesProvince(zone.ProvinceCodes, req.ProvinceCode) {
+			continue
+		}
+		kg := int64((req.WeightGrams + 999) / 1000)
+		if kg < 1 {
+			kg = 1
+		}
+		out = append(out, QuoteOption{
+			ID:               "own-fleet-" + strings.ToLower(strings.ReplaceAll(zone.ZoneName, " ", "-")),
+			CarrierName:      "ELIXIR",
+			ServiceName:      "Envío a domicilio",
+			PriceCents:       zone.BaseCostCents + zone.PerKGCents*kg,
+			EstimatedDaysMin: zone.EstimatedDaysMin,
+			EstimatedDaysMax: zone.EstimatedDaysMax,
+		})
+	}
+	return out, nil
+}
+
+func matchesProvince(codes []string, province string) bool {
+	if len(codes) == 0 {
+		return true
+	}
+	normalized := provinceAliases(strings.ToUpper(strings.TrimSpace(province)))
+	for _, code := range codes {
+		for _, alias := range provinceAliases(strings.ToUpper(strings.TrimSpace(code))) {
+			for _, p := range normalized {
+				if alias == "AR" && p != "C" && p != "CF" && p != "CABA" && p != "B" && p != "BA" && p != "BUENOS_AIRES" {
+					return true
+				}
+				if alias == p {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func provinceAliases(code string) []string {
+	switch code {
+	case "C", "CF", "CABA":
+		return []string{"C", "CF", "CABA"}
+	case "B", "BA", "BUENOS_AIRES":
+		return []string{"B", "BA", "BUENOS_AIRES"}
+	case "AR":
+		return []string{"AR"}
+	default:
+		return []string{code}
+	}
 }

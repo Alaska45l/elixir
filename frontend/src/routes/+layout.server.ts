@@ -1,6 +1,7 @@
-import { getHomepage } from '$lib/api/client';
+import { getHomepage, getSettings } from '$lib/api/client';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ fetch }) => {
-  return { homepage: await getHomepage(fetch) };
+  const [homepage, settings] = await Promise.all([getHomepage(fetch), getSettings(fetch)]);
+  return { homepage, settings };
 };

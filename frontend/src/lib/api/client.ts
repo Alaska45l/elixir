@@ -8,6 +8,7 @@ export type Variant = {
   stock: number;
   sku?: string;
   active: boolean;
+  weight_grams: number;
 };
 
 export type ProductImage = {
@@ -88,6 +89,39 @@ export type ShippingZone = {
   estimated_days_max: number;
 };
 
+export type FAQItem = { question: string; answer: string };
+export type NavItem = { label: string; href: string };
+export type SiteSettings = {
+  footer_instagram_url: string;
+  footer_tiktok_url: string;
+  footer_whatsapp_url: string;
+  announcement_bar_text: string;
+  announcement_bar_active: boolean;
+  about_title: string;
+  about_description: string;
+  about_location: string;
+  about_phone: string;
+  faq_items: FAQItem[];
+  return_policy_html: string;
+  navbar_product_categories: NavItem[];
+};
+
+export type ShippingQuoteRequest = {
+  destination_postal_code: string;
+  province_code: string;
+  weight_grams: number;
+  dimensions: { length_cm: number; width_cm: number; height_cm: number };
+};
+
+export type ShippingQuoteOption = {
+  id: string;
+  carrier_name: string;
+  service_name: string;
+  price_cents: number;
+  estimated_days_min: number;
+  estimated_days_max: number;
+};
+
 export type ListResponse<T> = { items: T[]; total?: number; limit?: number; offset?: number };
 
 export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typeof fetch = fetch): Promise<T> {
@@ -133,6 +167,15 @@ export async function getHomepage(fetcher: typeof fetch = fetch): Promise<Homepa
   }
 }
 
+export async function getSettings(fetcher: typeof fetch = fetch): Promise<SiteSettings> {
+  try {
+    const data = await apiFetch<SiteSettings>('/api/settings', undefined, fetcher);
+    return { ...defaultSettings, ...data };
+  } catch {
+    return defaultSettings;
+  }
+}
+
 export async function getShippingZones(fetcher: typeof fetch = fetch): Promise<ShippingZone[]> {
   try {
     const data = await apiFetch<ListResponse<ShippingZone>>('/api/shipping/zones', undefined, fetcher);
@@ -146,6 +189,14 @@ export async function getShippingZones(fetcher: typeof fetch = fetch): Promise<S
   }
 }
 
+export async function quoteShipping(req: ShippingQuoteRequest): Promise<ShippingQuoteOption[]> {
+  const data = await apiFetch<ListResponse<ShippingQuoteOption>>('/api/shipping/quote', {
+    method: 'POST',
+    body: JSON.stringify(req)
+  });
+  return data.items;
+}
+
 export const defaultHomepage: HomepageSettings = {
   hero_heading: 'Perfumería argentina de gesto privado',
   hero_subheading: 'Fragancias intensas, precisas y comerciales, curadas para noches largas, hoteles silenciosos y piel con presencia.',
@@ -155,6 +206,31 @@ export const defaultHomepage: HomepageSettings = {
   editorial_heading: 'Una firma de baja voz',
   editorial_body: 'ELIXIR Exclusive trabaja familias olfativas densas y modernas: maderas limpias, ámbar seco, flores oscuras y cítricos fríos. Cada compra se prepara con empaque sobrio y seguimiento personalizado.',
   editorial_image_url: 'https://images.unsplash.com/photo-1595425970377-c9703cf48b6f?auto=format&fit=crop&w=1000&q=85'
+};
+
+export const defaultSettings: SiteSettings = {
+  footer_instagram_url: '',
+  footer_tiktok_url: '',
+  footer_whatsapp_url: '',
+  announcement_bar_text: 'Envíos a todo el país · Empaque discreto · Seguimiento personalizado',
+  announcement_bar_active: true,
+  about_title: 'ELIXIR Exclusive',
+  about_description: 'Perfumería argentina de lujo discreto. Fragancias intensas, envíos nacionales y atención privada.',
+  about_location: 'Buenos Aires, Argentina',
+  about_phone: '',
+  faq_items: [
+    { question: '¿Los perfumes son originales?', answer: 'Sí. ELIXIR Exclusive comercializa fragancias seleccionadas y documentadas.' },
+    { question: '¿Qué medios de pago aceptan?', answer: 'El checkout opera en ARS mediante MercadoPago.' },
+    { question: '¿Hacen envíos?', answer: 'Sí, a CABA, GBA e Interior con seguimiento.' },
+    { question: '¿Puedo consultar por WhatsApp?', answer: 'Sí. Recomendamos WhatsApp para asesoramiento rápido.' }
+  ],
+  return_policy_html: '<p>Los cambios se revisan caso por caso con el producto cerrado, sin uso y dentro de los plazos informados por atención al cliente.</p>',
+  navbar_product_categories: [
+    { label: 'Fragancias Masculinas', href: '/fragrances?gender=Masculino' },
+    { label: 'Fragancias Femeninas', href: '/fragrances?gender=Femenino' },
+    { label: 'Línea Oriental', href: '/fragrances?family=Oriental' },
+    { label: 'Línea Amaderada', href: '/fragrances?family=Amaderado' }
+  ]
 };
 
 export const demoProducts: Product[] = [
@@ -184,8 +260,8 @@ function makeProduct(slug: string, name: string, tagline: string, family: string
     active: true,
     display_order: 0,
     variants: [
-      { id: `${slug}-50`, product_id: id, size_ml: 50, price_ars_cents: price, stock, sku: `${slug.toUpperCase()}-50`, active: true },
-      { id: `${slug}-100`, product_id: id, size_ml: 100, price_ars_cents: Math.round(price * 1.65), stock, sku: `${slug.toUpperCase()}-100`, active: true }
+      { id: `${slug}-50`, product_id: id, size_ml: 50, price_ars_cents: price, stock, sku: `${slug.toUpperCase()}-50`, active: true, weight_grams: 200 },
+      { id: `${slug}-100`, product_id: id, size_ml: 100, price_ars_cents: Math.round(price * 1.65), stock, sku: `${slug.toUpperCase()}-100`, active: true, weight_grams: 320 }
     ],
     images: [
       { id: `${slug}-1`, product_id: id, url: image, alt_text: name, is_primary: true, sort_order: 0 },

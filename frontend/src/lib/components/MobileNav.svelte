@@ -1,13 +1,19 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { onDestroy, onMount } from 'svelte';
+  import type { NavItem, SiteSettings } from '$lib/api/client';
+  import { onDestroy } from 'svelte';
 
+  export let id = 'mobile-nav';
   export let open = false;
+  export let settings: SiteSettings;
+  export let contactLinks: NavItem[] = [];
   export let onClose: () => void = () => undefined;
 
-  onMount(() => {
-    if (open) document.body.style.overflow = 'hidden';
-  });
+  let expanded: string[] = ['productos'];
+
+  function toggle(group: string) {
+    expanded = expanded.includes(group) ? expanded.filter((item) => item !== group) : [...expanded, group];
+  }
 
   onDestroy(() => {
     if (browser) document.body.style.overflow = '';
@@ -18,38 +24,72 @@
   }
 </script>
 
-{#if open}
-  <button class="shade" type="button" on:click={onClose} aria-label="Cerrar menú"></button>
-  <nav class="mobile-nav" aria-label="Menú de navegación">
-    <div class="nav-header">
-      <a class="brand display" href="/" on:click={onClose}>ELIXIR</a>
-      <button type="button" on:click={onClose} aria-label="Cerrar">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M2 2L18 18M18 2L2 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-        </svg>
-      </button>
-    </div>
-    <ul>
-      <li><a href="/fragrances" on:click={onClose}>Catálogo</a></li>
-      <li><a href="/envios" on:click={onClose}>Envíos</a></li>
-      <li><a href="/contacto" on:click={onClose}>Contacto</a></li>
-      <li><a href="/lista-de-deseos" on:click={onClose}>Mi lista de deseos</a></li>
-    </ul>
-    <div class="nav-footer">
-      <p class="eyebrow">ELIXIR Exclusive</p>
-      <p class="muted">Perfumería argentina de lujo discreto.</p>
-    </div>
-  </nav>
-{/if}
+<button class="shade" class:open type="button" on:click={onClose} aria-label="Cerrar menú" tabindex={open ? 0 : -1}></button>
+<nav {id} class="mobile-nav" class:open aria-label="Menú de navegación" aria-hidden={!open}>
+  <div class="nav-header">
+    <a class="brand display" href="/" on:click={onClose}>ELIXIR</a>
+    <button type="button" on:click={onClose} aria-label="Cerrar">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M2 2L18 18M18 2L2 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+      </svg>
+    </button>
+  </div>
+  <ul>
+    <li>
+      <button class="group-trigger" type="button" aria-expanded={expanded.includes('productos')} aria-controls="mobile-productos" on:click={() => toggle('productos')}>Productos</button>
+      <div id="mobile-productos" class="children" class:expanded={expanded.includes('productos')}>
+        {#each settings.navbar_product_categories as item}<a href={item.href} on:click={onClose}>{item.label}</a>{/each}
+      </div>
+    </li>
+    <li>
+      <button class="group-trigger" type="button" aria-expanded={expanded.includes('contacto')} aria-controls="mobile-contacto" on:click={() => toggle('contacto')}>Contacto</button>
+      <div id="mobile-contacto" class="children" class:expanded={expanded.includes('contacto')}>
+        {#each contactLinks as item}<a href={item.href} on:click={onClose}>{item.label}</a>{/each}
+      </div>
+    </li>
+    <li>
+      <button class="group-trigger" type="button" aria-expanded={expanded.includes('nosotros')} aria-controls="mobile-nosotros" on:click={() => toggle('nosotros')}>Nosotros</button>
+      <div id="mobile-nosotros" class="children about" class:expanded={expanded.includes('nosotros')}>
+        <strong>{settings.about_title}</strong>
+        <p>{settings.about_description}</p>
+        {#if settings.about_location}<span>{settings.about_location}</span>{/if}
+        {#if settings.about_phone}<a href={`tel:${settings.about_phone}`} on:click={onClose}>{settings.about_phone}</a>{/if}
+        {#if settings.footer_instagram_url}
+          <a class="social-link" href={settings.footer_instagram_url} target="_blank" rel="noreferrer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="5" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3.4" stroke="currentColor" stroke-width="1.6"/><circle cx="17" cy="7" r="1" fill="currentColor"/></svg>
+            Instagram
+          </a>
+        {/if}
+        {#if settings.footer_tiktok_url}
+          <a class="social-link" href={settings.footer_tiktok_url} target="_blank" rel="noreferrer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 4v10.2a3.8 3.8 0 1 1-3.8-3.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 4c.6 2.8 2.2 4.5 5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            TikTok
+          </a>
+        {/if}
+      </div>
+    </li>
+    <li><a class="solo" href="/lista-de-deseos" on:click={onClose}>Mi lista de deseos</a></li>
+  </ul>
+</nav>
 
 <style>
   .shade {
     position: fixed;
     inset: 0;
     background: var(--color-overlay);
+    backdrop-filter: blur(10px);
     z-index: 50;
     border: 0;
     padding: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .22s ease, visibility 0s linear .22s;
+  }
+
+  .shade.open {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0s;
   }
 
   .mobile-nav {
@@ -57,33 +97,43 @@
     left: 0;
     top: 0;
     bottom: 0;
-    width: min(320px, 85vw);
+    width: min(430px, 100vw);
     background: var(--color-surface);
     border-right: 1px solid var(--color-border);
     z-index: 51;
-    padding: 28px;
+    padding: 30px max(24px, 6vw);
     display: flex;
     flex-direction: column;
     gap: 0;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform .3s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .3s;
+  }
+
+  .mobile-nav.open {
+    transform: translateX(0);
+    visibility: visible;
+    transition-delay: 0s;
   }
 
   .nav-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 48px;
+    margin-bottom: 44px;
   }
 
   .nav-header .brand {
-    font-size: 1.55rem;
+    font-size: 1.7rem;
     color: var(--color-text);
   }
 
-  .nav-header button {
+  .nav-header button,
+  .group-trigger {
     background: transparent;
     border: 0;
-    color: var(--color-text-muted);
-    padding: 4px;
+    color: var(--color-text);
+    padding: 0;
   }
 
   ul {
@@ -95,52 +145,90 @@
     flex: 1;
   }
 
-  ul li {
+  li {
     border-bottom: 1px solid var(--color-border);
   }
 
-  ul li a {
-    display: block;
-    padding: 18px 0;
+  .group-trigger,
+  .solo {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    min-height: 70px;
+    padding: 20px 0;
     font-family: var(--font-display);
-    font-size: 1.9rem;
+    font-size: clamp(2.1rem, 9vw, 3rem);
     font-weight: 600;
     color: var(--color-text);
-    letter-spacing: -0.02em;
     line-height: 1;
+    text-align: left;
   }
 
-  ul li a:hover {
+  .group-trigger::after {
+    content: '+';
     color: var(--color-gold);
+    font-family: var(--font-ui);
+    font-size: 1.35rem;
   }
 
-  .nav-footer {
-    margin-top: 40px;
+  .group-trigger[aria-expanded='true']::after {
+    content: '-';
   }
 
-  .nav-footer .muted {
-    font-size: 0.82rem;
-    line-height: 1.6;
-    margin: 6px 0 0;
+  .children {
+    display: grid;
+    gap: 4px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height .24s ease, opacity .2s ease;
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .shade {
-      animation: fadeIn 0.22s ease both;
-    }
+  .children.expanded {
+    max-height: 360px;
+    opacity: 1;
+    padding-bottom: 14px;
+  }
 
-    .mobile-nav {
-      animation: slideInLeft 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
+  .children a,
+  .children span,
+  .children p,
+  .children strong {
+    color: var(--color-text-muted);
+    min-height: 48px;
+    padding: 10px 0;
+    font-size: 1.12rem;
+    line-height: 1.5;
+  }
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
+  .children a {
+    display: flex;
+    align-items: center;
+  }
 
-    @keyframes slideInLeft {
-      from { transform: translateX(-100%); }
-      to { transform: none; }
-    }
+  .children p {
+    min-height: 0;
+    font-size: 1rem;
+  }
+
+  .children strong {
+    color: var(--color-text);
+    padding-top: 0;
+    font-size: 1.18rem;
+    min-height: 0;
+  }
+
+  .social-link {
+    gap: 12px;
+  }
+
+  .social-link svg {
+    color: var(--color-gold);
+    flex: 0 0 auto;
+  }
+
+  .children a:hover,
+  .solo:hover {
+    color: var(--color-gold);
   }
 </style>

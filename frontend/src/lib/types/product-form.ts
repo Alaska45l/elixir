@@ -1,4 +1,4 @@
-export type VariantFormValue = { size_ml: number; price_ars_cents: number; stock: number; sku: string };
+export type VariantFormValue = { size_ml: number; price_ars_cents: number; stock: number; sku: string; weight_grams: number };
 export type ImageFormValue = { url: string; alt_text: string; is_primary: boolean; sort_order: number };
 
 export type ProductFormValue = {

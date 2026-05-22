@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -21,12 +22,12 @@ func (r DBRepository) FetchVariant(ctx context.Context, variantID string) (Valid
 	row := r.Pool.QueryRow(ctx, `
 SELECT p.id, v.id, p.name, p.slug,
        COALESCE((SELECT url FROM product_images i WHERE i.product_id=p.id ORDER BY i.is_primary DESC, i.sort_order ASC LIMIT 1), ''),
-       v.size_ml, v.price_ars_cents, v.stock
+	       v.size_ml, v.price_ars_cents, v.stock, v.weight_grams
 FROM product_variants v
 JOIN products p ON p.id=v.product_id
 WHERE v.id=$1 AND v.active=true AND p.active=true`, variantID)
 	var item ValidatedItem
-	err := row.Scan(&item.ProductID, &item.VariantID, &item.ProductName, &item.Slug, &item.PrimaryImage, &item.SizeML, &item.UnitPriceARSCents, &item.AvailableStock)
+	err := row.Scan(&item.ProductID, &item.VariantID, &item.ProductName, &item.Slug, &item.PrimaryImage, &item.SizeML, &item.UnitPriceARSCents, &item.AvailableStock, &item.WeightGrams)
 	return item, err
 }
 
@@ -53,6 +54,13 @@ RETURNING id, external_reference, status, customer_name, customer_email, COALESC
 		return nil, err
 	}
 	for _, item := range validation.Items {
+		tag, err := tx.Exec(ctx, `UPDATE product_variants SET stock = stock - $1 WHERE id=$2 AND active=true AND stock >= $1`, item.Quantity, item.VariantID)
+		if err != nil {
+			return nil, err
+		}
+		if tag.RowsAffected() != 1 {
+			return nil, fmt.Errorf("%s no tiene stock suficiente", item.ProductName)
+		}
 		_, err = tx.Exec(ctx, `INSERT INTO order_items (order_id, product_id, variant_id, product_name, size_ml, quantity, unit_price_ars_cents, subtotal_ars_cents) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
 			order.ID, item.ProductID, item.VariantID, item.ProductName, item.SizeML, item.Quantity, item.UnitPriceARSCents, item.SubtotalARSCents)
 		if err != nil {

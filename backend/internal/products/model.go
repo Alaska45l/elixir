@@ -33,6 +33,7 @@ type Variant struct {
 	Stock         int    `json:"stock"`
 	SKU           string `json:"sku,omitempty"`
 	Active        bool   `json:"active"`
+	WeightGrams   int    `json:"weight_grams"`
 }
 
 type ProductImage struct {
@@ -45,16 +46,16 @@ type ProductImage struct {
 }
 
 type ListFilters struct {
-	Featured      *bool
-	Family        string
-	Gender        string
-	Concentration string
-	MinPrice      int64
-	MaxPrice      int64
-	InStock       bool
-	Search        string
-	Limit         int
-	Offset        int
+	Featured       *bool
+	Families       []string
+	Genders        []string
+	Concentrations []string
+	MinPrice       int64
+	MaxPrice       int64
+	InStock        bool
+	Search         string
+	Limit          int
+	Offset         int
 }
 
 type ListResult struct {

@@ -29,6 +29,7 @@
       image: data.product.images[0]?.url ?? '',
       sizeML: selected.size_ml,
       unitPriceCents: selected.price_ars_cents,
+      weightGrams: selected.weight_grams,
       quantity: qty
     });
     toast.push('Añadido al carrito');

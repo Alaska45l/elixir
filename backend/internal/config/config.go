@@ -9,18 +9,24 @@ import (
 )
 
 type Config struct {
-	AppEnv          string
-	Port            string
-	FrontendURL     string
-	BackendURL      string
-	DatabaseURL     string
-	SessionSecret   string
-	SessionDuration time.Duration
-	MPAccessToken   string
-	MPWebhookSecret string
-	AllowedOrigins  []string
-	WhatsAppNumber  string
-	LogLevel        string
+	AppEnv            string
+	Port              string
+	FrontendURL       string
+	BackendURL        string
+	DatabaseURL       string
+	SessionSecret     string
+	SessionDuration   time.Duration
+	MPAccessToken     string
+	MPWebhookSecret   string
+	AllowedOrigins    []string
+	WhatsAppNumber    string
+	LogLevel          string
+	CorreoArgAPIKey   string
+	CorreoArgClientID string
+	AndreaniUser      string
+	AndreaniPassword  string
+	AndreaniClientID  string
+	OriginPostalCode  string
 }
 
 func Load() Config {
@@ -32,18 +38,24 @@ func Load() Config {
 		databaseURL = ""
 	}
 	return Config{
-		AppEnv:          env("APP_ENV", "development"),
-		Port:            env("PORT", "8080"),
-		FrontendURL:     env("FRONTEND_URL", "http://localhost:5173"),
-		BackendURL:      env("BACKEND_URL", "http://localhost:8080"),
-		DatabaseURL:     databaseURL,
-		SessionSecret:   env("SESSION_SECRET", "dev-secret-change-me-dev-secret-change-me-dev-secret-change-me"),
-		SessionDuration: time.Duration(hours) * time.Hour,
-		MPAccessToken:   os.Getenv("MP_ACCESS_TOKEN"),
-		MPWebhookSecret: os.Getenv("MP_WEBHOOK_SECRET"),
-		AllowedOrigins:  split(env("ALLOWED_ORIGINS", "http://localhost:5173")),
-		WhatsAppNumber:  env("WHATSAPP_NUMBER", "5491100000000"),
-		LogLevel:        env("LOG_LEVEL", "info"),
+		AppEnv:            env("APP_ENV", "development"),
+		Port:              env("PORT", "8080"),
+		FrontendURL:       env("FRONTEND_URL", "http://localhost:5173"),
+		BackendURL:        env("BACKEND_URL", "http://localhost:8080"),
+		DatabaseURL:       databaseURL,
+		SessionSecret:     env("SESSION_SECRET", "dev-secret-change-me-dev-secret-change-me-dev-secret-change-me"),
+		SessionDuration:   time.Duration(hours) * time.Hour,
+		MPAccessToken:     os.Getenv("MP_ACCESS_TOKEN"),
+		MPWebhookSecret:   os.Getenv("MP_WEBHOOK_SECRET"),
+		AllowedOrigins:    split(env("ALLOWED_ORIGINS", "http://localhost:5173")),
+		WhatsAppNumber:    env("WHATSAPP_NUMBER", "5491100000000"),
+		LogLevel:          env("LOG_LEVEL", "info"),
+		CorreoArgAPIKey:   os.Getenv("CORREO_ARG_API_KEY"),
+		CorreoArgClientID: os.Getenv("CORREO_ARG_CLIENT_ID"),
+		AndreaniUser:      os.Getenv("ANDREANI_USER"),
+		AndreaniPassword:  os.Getenv("ANDREANI_PASSWORD"),
+		AndreaniClientID:  os.Getenv("ANDREANI_CLIENT_ID"),
+		OriginPostalCode:  env("ORIGIN_POSTAL_CODE", "1000"),
 	}
 }
 

@@ -74,11 +74,6 @@ func (r DBRepository) RecordPaymentAndUpdateOrder(ctx context.Context, payment P
 		if err != nil {
 			return err
 		}
-		if status == "paid" {
-			if _, err := tx.Exec(ctx, `UPDATE product_variants v SET stock = GREATEST(0, stock - oi.quantity) FROM order_items oi WHERE oi.variant_id=v.id AND oi.order_id=$1`, *orderID); err != nil {
-				return err
-			}
-		}
 	}
 	return tx.Commit(ctx)
 }

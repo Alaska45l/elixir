@@ -118,7 +118,7 @@
     margin: 0 0 4px;
     font-size: clamp(1.1rem, 2.5vw, 1.45rem);
     line-height: 1;
-    letter-spacing: -0.01em;
+    letter-spacing: 0;
     transition: color 0.2s;
   }
 

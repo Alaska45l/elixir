@@ -1,6 +1,13 @@
-<div class="bar" role="banner">
-  <p>Envíos a todo el país · Empaque discreto · Seguimiento personalizado</p>
-</div>
+<script lang="ts">
+  import type { SiteSettings } from '$lib/api/client';
+  export let settings: SiteSettings;
+</script>
+
+{#if settings.announcement_bar_active && settings.announcement_bar_text}
+  <div class="bar" role="banner">
+    <p>{settings.announcement_bar_text}</p>
+  </div>
+{/if}
 
 <style>
   .bar {

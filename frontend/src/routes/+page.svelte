@@ -60,8 +60,8 @@
 <style>
   .hero {
     position: relative;
-    height: 95svh;
-    min-height: 560px;
+    min-height: clamp(560px, 78svh, 820px);
+    height: min(86svh, 860px);
     overflow: hidden;
   }
   .hero-img {
@@ -85,13 +85,15 @@
   }
   .hero-text {
     position: absolute;
-    bottom: 0;
+    inset: 0;
     left: 0;
     right: 0;
-    padding-bottom: clamp(40px, 6vh, 80px);
+    display: flex;
+    align-items: center;
+    padding-top: clamp(20px, 6vh, 70px);
   }
   .hero-content {
-    max-width: 720px;
+    max-width: clamp(640px, 48vw, 900px);
     position: relative;
   }
   .watermark { display: none; }
@@ -115,9 +117,9 @@
   .collections a { position: relative; overflow: hidden; min-height: 360px; }
   .collections img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
   .collections a:hover img { transform: scale(1.04); }
-  .collections span { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 24px 22px; background: linear-gradient(to top, color-mix(in srgb, var(--color-bg) 82%, transparent) 0%, transparent 100%); color: var(--color-text); font-family: var(--font-display); font-size: 2.2rem; font-weight: 500; letter-spacing: -.01em; }
+  .collections span { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 24px 22px; background: linear-gradient(to top, color-mix(in srgb, var(--color-bg) 82%, transparent) 0%, transparent 100%); color: var(--color-text); font-family: var(--font-display); font-size: 2.2rem; font-weight: 500; letter-spacing: 0; }
   @media (max-width: 600px) {
-    .hero { height: 80svh; }
+    .hero { min-height: 560px; height: 80svh; }
     h1 { font-size: clamp(2.8rem, 12vw, 5rem); }
     .actions { flex-direction: column; align-items: flex-start; }
   }
@@ -130,7 +132,7 @@
 
     @keyframes ken {
       from { transform: scale(1) translateX(0); }
-      to { transform: scale(1.07) translateX(-2%); }
+      to { transform: scale(1.04) translateX(0); }
     }
   }
 </style>

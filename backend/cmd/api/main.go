@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"elixir/backend/internal/admin"
@@ -47,7 +49,12 @@ func main() {
 	}}
 	adminHandler := admin.Handler{Pool: pool, Sessions: sessions, Auth: admin.AuthService{Pool: pool, Sessions: sessions, Limiter: loginLimiter}}
 	contactHandler := contact.Handler{Service: contact.Service{Pool: pool}}
-	shippingHandler := shipping.Handler{Service: shipping.Service{Repo: shipping.Repository{Pool: pool}}}
+	shippingProviders := []shipping.ShippingProvider{
+		shipping.LocalPickupProvider{},
+		shipping.CorreoArgentinoProvider{APIKey: cfg.CorreoArgAPIKey, ClientID: cfg.CorreoArgClientID, OriginPostalCode: cfg.OriginPostalCode},
+		&shipping.AndreaniProvider{User: cfg.AndreaniUser, Password: cfg.AndreaniPassword, ClientID: cfg.AndreaniClientID, OriginPostalCode: cfg.OriginPostalCode},
+	}
+	shippingHandler := shipping.Handler{Service: shipping.Service{Repo: shipping.Repository{Pool: pool}, Providers: shippingProviders}}
 
 	r := chi.NewRouter()
 	r.Use(middleware.SecurityHeaders)
@@ -59,6 +66,7 @@ func main() {
 
 	r.Mount("/", health.Handler{Pool: pool, Started: time.Now(), Version: "1.0.0"}.Routes())
 	r.Get("/api/homepage", adminHandler.PublicHomepage)
+	r.Get("/api/settings", adminHandler.PublicSettings)
 	r.With(apiLimiter.Middleware).Get("/api/products/search", productHandler.Search)
 	r.Mount("/api/products", productHandler.Routes())
 	r.With(apiLimiter.Middleware).Post("/api/cart/validate", orderHandler.ValidateCart)
@@ -68,13 +76,16 @@ func main() {
 	r.Post("/api/checkout/mercadopago/preference", paymentHandler.CreatePreference)
 	r.Post("/api/payments/mercadopago/webhook", paymentHandler.Webhook)
 	r.Get("/api/shipping/zones", shippingHandler.Zones)
+	r.Post("/api/shipping/quote", shippingHandler.Quote)
 	r.Post("/api/contact", contactHandler.Message)
 	r.Post("/api/contact/abandoned-cart", contactHandler.AbandonedCart)
 
-	r.With(middleware.NoStore, loginLimiter.Middleware).Post("/api/admin/login", adminHandler.Login)
-	r.With(middleware.NoStore).Post("/api/admin/logout", adminHandler.Logout)
+	adminCSRF := middleware.CSRF(cfg.AllowedOrigins, cfg.BackendURL)
+	r.With(middleware.NoStore, adminCSRF, loginLimiter.Middleware).Post("/api/admin/login", adminHandler.Login)
+	r.With(middleware.NoStore, adminCSRF).Post("/api/admin/logout", adminHandler.Logout)
 	r.Group(func(ar chi.Router) {
 		ar.Use(middleware.NoStore)
+		ar.Use(adminCSRF)
 		ar.Use(middleware.AdminSession(sessions))
 		ar.Get("/api/admin/me", adminHandler.Me)
 		ar.Get("/api/admin/metrics", adminHandler.Metrics)
@@ -82,6 +93,7 @@ func main() {
 		ar.Post("/api/admin/products", adminHandler.SaveProduct)
 		ar.Get("/api/admin/products/{id}", adminHandler.AdminProductByID)
 		ar.Put("/api/admin/products/{id}", adminHandler.SaveProduct)
+		ar.Put("/api/admin/products/{id}/active", adminHandler.UpdateProductActive)
 		ar.Delete("/api/admin/products/{id}", adminHandler.DeleteProduct)
 		ar.Post("/api/admin/products/import", adminHandler.ImportProducts)
 		ar.Get("/api/admin/orders", adminHandler.Orders)
@@ -93,12 +105,27 @@ func main() {
 		ar.Delete("/api/admin/discounts/{id}", adminHandler.DiscountByID)
 		ar.Get("/api/admin/homepage", adminHandler.Homepage)
 		ar.Put("/api/admin/homepage", adminHandler.Homepage)
+		ar.Get("/api/admin/settings", adminHandler.Settings)
+		ar.Put("/api/admin/settings", adminHandler.Settings)
 		ar.Get("/api/admin/contact", adminHandler.Contact)
 		ar.Put("/api/admin/contact/{id}/read", adminHandler.MarkContactRead)
 		ar.Get("/api/admin/low-stock", adminHandler.LowStock)
 	})
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r, ReadHeaderTimeout: 5 * time.Second}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	slog.Info("api listening", "port", cfg.Port)
-	log.Fatal(srv.ListenAndServe())
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
+	<-ctx.Done()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	slog.Info("api shutting down")
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatal(err)
+	}
 }
