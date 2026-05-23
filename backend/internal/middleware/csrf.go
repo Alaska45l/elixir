@@ -24,15 +24,16 @@ func CSRF(allowedOrigins []string, backendURL string) func(http.Handler) http.Ha
 				next.ServeHTTP(w, r)
 				return
 			}
-			if site := r.Header.Get("Sec-Fetch-Site"); site == "cross-site" {
-				httpx.Error(w, r, http.StatusForbidden, "origen no permitido")
-				return
-			}
 			origin := strings.TrimRight(r.Header.Get("Origin"), "/")
 			if origin == "" {
 				origin = refererOrigin(r.Header.Get("Referer"))
 			}
-			if origin != "" && !allowed[origin] {
+			originAllowed := origin != "" && allowed[origin]
+			if origin != "" && !originAllowed {
+				httpx.Error(w, r, http.StatusForbidden, "origen no permitido")
+				return
+			}
+			if site := r.Header.Get("Sec-Fetch-Site"); site == "cross-site" && !originAllowed {
 				httpx.Error(w, r, http.StatusForbidden, "origen no permitido")
 				return
 			}
