@@ -11,10 +11,12 @@
     <a class="display brand" href="/admin">ELIXIR</a>
     <a href="/admin/productos">Productos</a>
     <a href="/admin/ordenes">Órdenes</a>
+    <a href="/admin/envios">Envíos</a>
     <a href="/admin/descuentos">Descuentos</a>
     <a href="/admin/homepage">Homepage</a>
     <a href="/admin/configuracion">Configuración</a>
     <a href="/admin/mensajes">Mensajes</a>
+    <a href="/admin/cuenta">Cuenta</a>
     <button type="button" on:click={logout}>Salir</button>
   </aside>
   <main><slot /></main>

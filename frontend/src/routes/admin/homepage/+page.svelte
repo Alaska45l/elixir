@@ -5,6 +5,8 @@
   import { onMount } from 'svelte';
 
   let form: HomepageSettings = { ...defaultHomepage };
+  let error = '';
+  let saving = false;
 
   onMount(async () => {
     try {
@@ -16,8 +18,16 @@
   });
 
   async function save() {
-    await apiFetch('/api/admin/homepage', { method: 'PUT', body: JSON.stringify(form) });
-    toast.push('Homepage guardada');
+    error = '';
+    saving = true;
+    try {
+      await apiFetch('/api/admin/homepage', { method: 'PUT', body: JSON.stringify(form) });
+      toast.push('Homepage guardada');
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'No se pudo guardar la homepage';
+    } finally {
+      saving = false;
+    }
   }
 </script>
 
@@ -35,7 +45,7 @@
       <label class="field"><span>Texto del botón</span><input class="input" bind:value={form.hero_cta_label} /></label>
       <label class="field"><span>URL del botón</span><input class="input" bind:value={form.hero_cta_url} /></label>
     </div>
-    <label class="field"><span>Imagen del hero</span><input class="input" bind:value={form.hero_image_url} /></label>
+    <label class="field"><span>Imagen del hero</span><input class="input" bind:value={form.hero_image_url} placeholder="https://..." /><small>Usá una imagen pública HTTPS ya subida.</small></label>
     {#if form.hero_image_url}<img class="preview wide" src={form.hero_image_url} alt="Vista previa del hero" />{/if}
   </section>
 
@@ -43,11 +53,12 @@
     <h2>Bloque editorial</h2>
     <label class="field"><span>Título editorial</span><input class="input" bind:value={form.editorial_heading} /></label>
     <label class="field"><span>Texto editorial</span><textarea class="textarea" bind:value={form.editorial_body}></textarea></label>
-    <label class="field"><span>Imagen editorial</span><input class="input" bind:value={form.editorial_image_url} /></label>
+    <label class="field"><span>Imagen editorial</span><input class="input" bind:value={form.editorial_image_url} placeholder="https://..." /></label>
     {#if form.editorial_image_url}<img class="preview" src={form.editorial_image_url} alt="Vista previa editorial" />{/if}
   </section>
 
-  <button class="btn primary">Guardar homepage</button>
+  {#if error}<p class="error">{error}</p>{/if}
+  <button class="btn primary" disabled={saving}>{saving ? 'Guardando...' : 'Guardar homepage'}</button>
 </form>
 
 <style>
@@ -55,6 +66,8 @@
   .form { display: grid; gap: 28px; max-width: 900px; }
   section { border-top: 1px solid var(--color-border); padding-top: 22px; display: grid; gap: 16px; }
   h2 { margin: 0; font-size: 1rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .12em; }
+  small { color: var(--color-text-muted); }
+  .error { margin: 0; color: var(--color-danger-soft); }
   .preview { width: 320px; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--color-border); }
   .preview.wide { width: min(100%, 720px); aspect-ratio: 16/7; }
 </style>

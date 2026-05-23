@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -28,6 +29,7 @@ func (h Handler) Login(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusBadRequest, "cuerpo inválido")
 		return
 	}
+	req.Username = strings.TrimSpace(req.Username)
 	ok, err := h.Auth.Login(r.Context(), r.RemoteAddr, req.Username, req.Password)
 	if err != nil {
 		httpx.Error(w, r, http.StatusInternalServerError, "no se pudo iniciar sesión")
@@ -57,17 +59,19 @@ func (h Handler) Me(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) Metrics(w http.ResponseWriter, r *http.Request) {
 	if h.Pool == nil {
-		httpx.WriteJSON(w, http.StatusOK, map[string]any{"total_products": 0, "total_orders": 0, "paid_revenue_cents": 0, "pending_orders": 0, "recent_orders": []any{}})
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{"total_products": 0, "total_orders": 0, "paid_revenue_cents": 0, "pending_orders": 0, "low_stock_count": 0, "recent_orders": []any{}})
 		return
 	}
-	var totalProducts, totalOrders, pendingOrders int
+	var totalProducts, totalOrders, pendingOrders, lowStockCount int
 	var revenue int64
+	threshold := h.lowStockThreshold(r)
 	_ = h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM products WHERE active=true`).Scan(&totalProducts)
 	_ = h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM orders`).Scan(&totalOrders)
 	_ = h.Pool.QueryRow(r.Context(), `SELECT COALESCE(SUM(total_ars_cents),0) FROM orders WHERE status='paid'`).Scan(&revenue)
 	_ = h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM orders WHERE status='pending'`).Scan(&pendingOrders)
+	_ = h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM product_variants v JOIN products p ON p.id=v.product_id WHERE v.stock <= $1 AND v.active=true AND p.active=true`, threshold).Scan(&lowStockCount)
 	recent := h.recentOrders(r)
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"total_products": totalProducts, "total_orders": totalOrders, "paid_revenue_cents": revenue, "pending_orders": pendingOrders, "recent_orders": recent})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"total_products": totalProducts, "total_orders": totalOrders, "paid_revenue_cents": revenue, "pending_orders": pendingOrders, "low_stock_count": lowStockCount, "recent_orders": recent})
 }
 
 func (h Handler) AdminProducts(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +79,14 @@ func (h Handler) AdminProducts(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": []any{}})
 		return
 	}
-	rows, err := h.Pool.Query(r.Context(), `SELECT id, slug, name, COALESCE(tagline,''), featured, active, display_order FROM products ORDER BY display_order ASC, created_at DESC LIMIT 100`)
+	rows, err := h.Pool.Query(r.Context(), `
+		SELECT p.id, p.slug, p.name, COALESCE(p.tagline,''), p.featured, p.active, p.display_order,
+			COALESCE((SELECT MIN(price_ars_cents) FROM product_variants v WHERE v.product_id=p.id AND v.active=true), 0),
+			COALESCE((SELECT SUM(stock) FROM product_variants v WHERE v.product_id=p.id AND v.active=true), 0),
+			COALESCE((SELECT COUNT(*) FROM product_variants v WHERE v.product_id=p.id AND v.active=true), 0)
+		FROM products p
+		ORDER BY p.display_order ASC, p.created_at DESC
+		LIMIT 200`)
 	if err != nil {
 		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron listar productos")
 		return
@@ -85,9 +96,10 @@ func (h Handler) AdminProducts(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var id, slug, name, tagline string
 		var featured, active bool
-		var order int
-		if rows.Scan(&id, &slug, &name, &tagline, &featured, &active, &order) == nil {
-			items = append(items, map[string]any{"id": id, "slug": slug, "name": name, "tagline": tagline, "featured": featured, "active": active, "display_order": order})
+		var order, totalStock, variantCount int
+		var minPrice int64
+		if rows.Scan(&id, &slug, &name, &tagline, &featured, &active, &order, &minPrice, &totalStock, &variantCount) == nil {
+			items = append(items, map[string]any{"id": id, "slug": slug, "name": name, "tagline": tagline, "featured": featured, "active": active, "display_order": order, "min_price_ars_cents": minPrice, "total_stock": totalStock, "variant_count": variantCount})
 		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
@@ -140,6 +152,10 @@ func (h Handler) SaveProduct(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
 		return
 	}
+	if err := normalizeProductPayload(&req); err != nil {
+		httpx.Error(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
 	id := chi.URLParam(r, "id")
 	action := "product.update"
 	tx, err := h.Pool.Begin(r.Context())
@@ -181,6 +197,10 @@ func (h Handler) SaveProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
+	if h.Pool == nil {
+		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
+		return
+	}
 	_, err := h.Pool.Exec(r.Context(), `UPDATE products SET active=false, updated_at=now() WHERE id=$1`, chi.URLParam(r, "id"))
 	if err != nil {
 		httpx.Error(w, r, http.StatusBadRequest, "no se pudo eliminar")
@@ -191,6 +211,10 @@ func (h Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) UpdateProductActive(w http.ResponseWriter, r *http.Request) {
+	if h.Pool == nil {
+		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
+		return
+	}
 	var req struct {
 		Active bool `json:"active"`
 	}
@@ -350,20 +374,41 @@ func (h Handler) Orders(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Status         string `json:"status"`
-		TrackingNumber string `json:"tracking_number"`
+	if h.Pool == nil {
+		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
+		return
 	}
+	var req orderUpdateRequest
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.Error(w, r, http.StatusBadRequest, "cuerpo inválido")
 		return
 	}
-	_, err := h.Pool.Exec(r.Context(), `UPDATE orders SET status=$1, tracking_number=$2, updated_at=now() WHERE id=$3`, req.Status, req.TrackingNumber, chi.URLParam(r, "id"))
-	if err != nil {
+	req.Status = strings.TrimSpace(req.Status)
+	req.TrackingNumber = strings.TrimSpace(req.TrackingNumber)
+	req.ShippingCarrier = strings.TrimSpace(req.ShippingCarrier)
+	req.InternalNotes = strings.TrimSpace(req.InternalNotes)
+	if !validateOrderStatus(req.Status) {
+		httpx.Error(w, r, http.StatusBadRequest, "estado de orden inválido")
+		return
+	}
+	if len(req.TrackingNumber) > 120 || len(req.ShippingCarrier) > 80 || len(req.InternalNotes) > 1000 {
+		httpx.Error(w, r, http.StatusBadRequest, "revisá tracking, correo o notas internas")
+		return
+	}
+	if req.Status == "shipped" && req.ShippedAt == nil {
+		now := time.Now()
+		req.ShippedAt = &now
+	}
+	tag, err := h.Pool.Exec(r.Context(), `
+		UPDATE orders
+		SET status=$1, tracking_number=$2, shipping_carrier=$3, shipped_at=$4, internal_notes=$5, updated_at=now()
+		WHERE id=$6`,
+		req.Status, req.TrackingNumber, req.ShippingCarrier, req.ShippedAt, req.InternalNotes, chi.URLParam(r, "id"))
+	if err != nil || tag.RowsAffected() == 0 {
 		httpx.Error(w, r, http.StatusBadRequest, "no se pudo actualizar")
 		return
 	}
-	audit.Log(r.Context(), h.Pool, audit.Event{ActorUsername: h.actor(r), Action: "order.status_change", ResourceID: chi.URLParam(r, "id"), Metadata: map[string]any{"status": req.Status}})
+	audit.Log(r.Context(), h.Pool, audit.Event{ActorUsername: h.actor(r), Action: "order.update", ResourceID: chi.URLParam(r, "id"), Metadata: map[string]any{"status": req.Status, "tracking": req.TrackingNumber, "carrier": req.ShippingCarrier}})
 	httpx.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -376,33 +421,57 @@ func (h Handler) ExportOrders(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="orders-`+time.Now().Format("2006-01-02")+`.csv"`)
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
-	_ = writer.Write([]string{"external_reference", "status", "customer_name", "customer_email", "total_ars_cents", "created_at"})
-	rows, err := h.Pool.Query(r.Context(), `SELECT external_reference, status, customer_name, customer_email, total_ars_cents, created_at FROM orders ORDER BY created_at DESC`)
+	_ = writer.Write([]string{"external_reference", "status", "customer_name", "customer_email", "customer_phone", "subtotal_ars_cents", "shipping_cost_ars_cents", "discount_ars_cents", "total_ars_cents", "payment_status", "tracking_number", "shipping_carrier", "created_at"})
+	rows, err := h.Pool.Query(r.Context(), `
+		SELECT o.external_reference, o.status, o.customer_name, o.customer_email, COALESCE(o.customer_phone,''),
+			o.subtotal_ars_cents, o.shipping_cost_ars_cents, o.discount_ars_cents, o.total_ars_cents,
+			COALESCE(pe.mp_status,''), COALESCE(o.tracking_number,''), COALESCE(o.shipping_carrier,''), o.created_at
+		FROM orders o
+		LEFT JOIN LATERAL (
+			SELECT mp_status FROM payment_events pe WHERE pe.order_id=o.id ORDER BY processed_at DESC LIMIT 1
+		) pe ON true
+		ORDER BY o.created_at DESC`)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var ref, status, name, email string
-		var total int64
+		var ref, status, name, email, phone, paymentStatus, tracking, carrier string
+		var subtotal, shipping, discount, total int64
 		var created time.Time
-		if rows.Scan(&ref, &status, &name, &email, &total, &created) == nil {
-			_ = writer.Write([]string{ref, status, name, email, strconv.FormatInt(total, 10), created.Format(time.RFC3339)})
+		if rows.Scan(&ref, &status, &name, &email, &phone, &subtotal, &shipping, &discount, &total, &paymentStatus, &tracking, &carrier, &created) == nil {
+			_ = writer.Write([]string{ref, status, name, email, phone, strconv.FormatInt(subtotal, 10), strconv.FormatInt(shipping, 10), strconv.FormatInt(discount, 10), strconv.FormatInt(total, 10), paymentStatus, tracking, carrier, created.Format(time.RFC3339)})
 		}
 	}
 }
 
 func (h Handler) Discounts(w http.ResponseWriter, r *http.Request) {
+	if h.Pool == nil {
+		if r.Method == http.MethodGet {
+			httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": []any{}})
+			return
+		}
+		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
+		return
+	}
 	if r.Method == http.MethodGet {
 		h.listTable(w, r, `SELECT id, code, discount_type, discount_value, min_order_cents, max_uses, uses, active, expires_at FROM discount_codes ORDER BY created_at DESC`)
 		return
 	}
-	var req discountCreateRequest
+	var req discountWriteRequest
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.Error(w, r, http.StatusBadRequest, "cuerpo inválido")
 		return
 	}
-	_, err := h.Pool.Exec(r.Context(), `INSERT INTO discount_codes (code,discount_type,discount_value,min_order_cents,max_uses,expires_at,active) VALUES (UPPER($1),$2,$3,$4,$5,$6,true)`, req.Code, req.DiscountType, req.DiscountValue, req.MinOrderCents, req.MaxUses, req.ExpiresAt)
+	if err := normalizeDiscountPayload(&req, true); err != nil {
+		httpx.Error(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+	active := true
+	if req.Active != nil {
+		active = *req.Active
+	}
+	_, err := h.Pool.Exec(r.Context(), `INSERT INTO discount_codes (code,discount_type,discount_value,min_order_cents,max_uses,expires_at,active) VALUES ($1,$2,$3,$4,$5,$6,$7)`, req.Code, req.DiscountType, req.DiscountValue, req.MinOrderCents, req.MaxUses, req.ExpiresAt, active)
 	if err != nil {
 		httpx.Error(w, r, http.StatusBadRequest, "no se pudo crear")
 		return
@@ -412,22 +481,39 @@ func (h Handler) Discounts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) DiscountByID(w http.ResponseWriter, r *http.Request) {
+	if h.Pool == nil {
+		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
+		return
+	}
 	if r.Method == http.MethodDelete {
-		_, _ = h.Pool.Exec(r.Context(), `DELETE FROM discount_codes WHERE id=$1`, chi.URLParam(r, "id"))
+		tag, err := h.Pool.Exec(r.Context(), `DELETE FROM discount_codes WHERE id=$1`, chi.URLParam(r, "id"))
+		if err != nil || tag.RowsAffected() == 0 {
+			httpx.Error(w, r, http.StatusBadRequest, "no se pudo eliminar")
+			return
+		}
 		audit.Log(r.Context(), h.Pool, audit.Event{ActorUsername: h.actor(r), Action: "discount.delete", ResourceID: chi.URLParam(r, "id")})
 		httpx.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 		return
 	}
-	var req discountUpdateRequest
+	var req discountWriteRequest
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.Error(w, r, http.StatusBadRequest, "cuerpo inválido")
 		return
 	}
-	_, err := h.Pool.Exec(r.Context(), `UPDATE discount_codes SET active=COALESCE($1, active) WHERE id=$2`, req.Active, chi.URLParam(r, "id"))
-	if err != nil {
+	if err := normalizeDiscountPayload(&req, false); err != nil {
+		httpx.Error(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+	active := true
+	if req.Active != nil {
+		active = *req.Active
+	}
+	tag, err := h.Pool.Exec(r.Context(), `UPDATE discount_codes SET code=$1, discount_type=$2, discount_value=$3, min_order_cents=$4, max_uses=$5, expires_at=$6, active=$7 WHERE id=$8`, req.Code, req.DiscountType, req.DiscountValue, req.MinOrderCents, req.MaxUses, req.ExpiresAt, active, chi.URLParam(r, "id"))
+	if err != nil || tag.RowsAffected() == 0 {
 		httpx.Error(w, r, http.StatusBadRequest, "no se pudo actualizar")
 		return
 	}
+	audit.Log(r.Context(), h.Pool, audit.Event{ActorUsername: h.actor(r), Action: "discount.update", ResourceID: chi.URLParam(r, "id"), Metadata: map[string]any{"code": req.Code, "active": active}})
 	httpx.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -441,12 +527,21 @@ func (h Handler) Homepage(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusBadRequest, "cuerpo inválido")
 		return
 	}
+	if h.Pool == nil {
+		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
+		return
+	}
+	if err := normalizeHomepagePayload(&req); err != nil {
+		httpx.Error(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
 	_, err := h.Pool.Exec(r.Context(), `INSERT INTO homepage_settings (id, hero_heading, hero_subheading, hero_image_url, hero_cta_label, hero_cta_url, editorial_heading, editorial_body, editorial_image_url) VALUES (1,$1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO UPDATE SET hero_heading=$1, hero_subheading=$2, hero_image_url=$3, hero_cta_label=$4, hero_cta_url=$5, editorial_heading=$6, editorial_body=$7, editorial_image_url=$8, updated_at=now()`,
 		req.HeroHeading, req.HeroSubheading, req.HeroImageURL, req.HeroCTALabel, req.HeroCTAURL, req.EditorialHeading, req.EditorialBody, req.EditorialImageURL)
 	if err != nil {
 		httpx.Error(w, r, http.StatusBadRequest, "no se pudo guardar")
 		return
 	}
+	audit.Log(r.Context(), h.Pool, audit.Event{ActorUsername: h.actor(r), Action: "homepage.update"})
 	httpx.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -484,6 +579,10 @@ func (h Handler) Settings(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
 		return
 	}
+	if err := normalizeSiteSettingsPayload(&req); err != nil {
+		httpx.Error(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
 	faqJSON, _ := json.Marshal(req.FAQItems)
 	navJSON, _ := json.Marshal(req.NavbarProductCategories)
 	_, err := h.Pool.Exec(r.Context(), `
@@ -491,8 +590,8 @@ func (h Handler) Settings(w http.ResponseWriter, r *http.Request) {
 		id, footer_instagram_url, footer_tiktok_url, footer_whatsapp_url,
 		announcement_bar_text, announcement_bar_active,
 		about_title, about_description, about_location, about_phone,
-		faq_items, return_policy_html, navbar_product_categories, updated_at
-	) VALUES (1,$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now())
+		faq_items, return_policy_html, navbar_product_categories, low_stock_threshold, updated_at
+	) VALUES (1,$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,now())
 	ON CONFLICT (id) DO UPDATE SET
 		footer_instagram_url=$1,
 		footer_tiktok_url=$2,
@@ -506,11 +605,12 @@ func (h Handler) Settings(w http.ResponseWriter, r *http.Request) {
 		faq_items=$10,
 		return_policy_html=$11,
 		navbar_product_categories=$12,
+		low_stock_threshold=$13,
 		updated_at=now()`,
 		req.FooterInstagramURL, req.FooterTikTokURL, req.FooterWhatsAppURL,
 		req.AnnouncementBarText, req.AnnouncementBarActive,
 		req.AboutTitle, req.AboutDescription, req.AboutLocation, req.AboutPhone,
-		faqJSON, req.ReturnPolicyHTML, navJSON)
+		faqJSON, req.ReturnPolicyHTML, navJSON, req.LowStockThreshold)
 	if err != nil {
 		httpx.Error(w, r, http.StatusBadRequest, "no se pudo guardar")
 		return
@@ -547,9 +647,10 @@ func (h Handler) loadSiteSettings(r *http.Request) (siteSettings, error) {
 		COALESCE(about_phone,''),
 		COALESCE(faq_items,'[]'::jsonb),
 		COALESCE(return_policy_html,''),
-		COALESCE(navbar_product_categories,'[]'::jsonb)
+		COALESCE(navbar_product_categories,'[]'::jsonb),
+		COALESCE(low_stock_threshold, 5)
 	FROM site_settings WHERE id=1`).
-		Scan(&s.FooterInstagramURL, &s.FooterTikTokURL, &s.FooterWhatsAppURL, &s.AnnouncementBarText, &s.AnnouncementBarActive, &s.AboutTitle, &s.AboutDescription, &s.AboutLocation, &s.AboutPhone, &faqRaw, &s.ReturnPolicyHTML, &navRaw)
+		Scan(&s.FooterInstagramURL, &s.FooterTikTokURL, &s.FooterWhatsAppURL, &s.AnnouncementBarText, &s.AnnouncementBarActive, &s.AboutTitle, &s.AboutDescription, &s.AboutLocation, &s.AboutPhone, &faqRaw, &s.ReturnPolicyHTML, &navRaw, &s.LowStockThreshold)
 	if err != nil {
 		return s, err
 	}
@@ -566,6 +667,9 @@ func (h Handler) loadSiteSettings(r *http.Request) (siteSettings, error) {
 	if err := json.Unmarshal(navRaw, &s.NavbarProductCategories); err != nil {
 		s.NavbarProductCategories = defaults.NavbarProductCategories
 	}
+	if s.LowStockThreshold <= 0 {
+		s.LowStockThreshold = defaults.LowStockThreshold
+	}
 	return s, nil
 }
 
@@ -579,7 +683,37 @@ func (h Handler) MarkContactRead(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) LowStock(w http.ResponseWriter, r *http.Request) {
-	h.listTable(w, r, `SELECT v.id, p.id AS product_id, p.name, v.size_ml, v.stock FROM product_variants v JOIN products p ON p.id=v.product_id WHERE v.stock <= 5 AND v.active=true AND p.active=true ORDER BY v.stock ASC`)
+	if h.Pool == nil {
+		httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": []any{}, "threshold": 5})
+		return
+	}
+	threshold := h.lowStockThreshold(r)
+	rows, err := h.Pool.Query(r.Context(), `SELECT v.id, p.id AS product_id, p.name, v.size_ml, v.stock FROM product_variants v JOIN products p ON p.id=v.product_id WHERE v.stock <= $1 AND v.active=true AND p.active=true ORDER BY v.stock ASC, p.name ASC`, threshold)
+	if err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudo consultar")
+		return
+	}
+	defer rows.Close()
+	items := []map[string]any{}
+	for rows.Next() {
+		var id, productID, name string
+		var size, stock int
+		if rows.Scan(&id, &productID, &name, &size, &stock) == nil {
+			items = append(items, map[string]any{"id": id, "product_id": productID, "name": name, "size_ml": size, "stock": stock})
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items, "threshold": threshold})
+}
+
+func (h Handler) lowStockThreshold(r *http.Request) int {
+	if h.Pool == nil {
+		return 5
+	}
+	var threshold int
+	if err := h.Pool.QueryRow(r.Context(), `SELECT COALESCE(low_stock_threshold, 5) FROM site_settings WHERE id=1`).Scan(&threshold); err != nil || threshold <= 0 {
+		return 5
+	}
+	return threshold
 }
 
 func (h Handler) listTable(w http.ResponseWriter, r *http.Request, query string) {
@@ -615,7 +749,22 @@ func (h Handler) orders(r *http.Request, limit int) []map[string]any {
 	if h.Pool == nil {
 		return []map[string]any{}
 	}
-	rows, err := h.Pool.Query(r.Context(), `SELECT id, external_reference, status, customer_name, customer_email, COALESCE(customer_phone,''), COALESCE(shipping_address,'{}'::jsonb), total_ars_cents, COALESCE(tracking_number,''), created_at FROM orders ORDER BY created_at DESC LIMIT $1`, limit)
+	rows, err := h.Pool.Query(r.Context(), `
+		SELECT o.id, o.external_reference, o.status, o.customer_name, o.customer_email, COALESCE(o.customer_phone,''),
+			COALESCE(o.shipping_address,'{}'::jsonb), o.shipping_cost_ars_cents, o.subtotal_ars_cents, o.total_ars_cents,
+			COALESCE(o.discount_code,''), o.discount_ars_cents, COALESCE(o.currency,'ARS'),
+			COALESCE(o.tracking_number,''), COALESCE(o.shipping_carrier,''), o.shipped_at, COALESCE(o.internal_notes,''), o.created_at,
+			pe.mp_payment_id, pe.mp_preference_id, pe.mp_status, pe.mp_status_detail, pe.processed_at
+		FROM orders o
+		LEFT JOIN LATERAL (
+			SELECT mp_payment_id, mp_preference_id, mp_status, mp_status_detail, processed_at
+			FROM payment_events pe
+			WHERE pe.order_id=o.id
+			ORDER BY pe.processed_at DESC
+			LIMIT 1
+		) pe ON true
+		ORDER BY o.created_at DESC
+		LIMIT $1`, limit)
 	if err != nil {
 		return []map[string]any{}
 	}
@@ -623,15 +772,35 @@ func (h Handler) orders(r *http.Request, limit int) []map[string]any {
 	items := []map[string]any{}
 	orderIDs := []string{}
 	for rows.Next() {
-		var id, ref, status, name, email, phone, tracking string
+		var id, ref, status, name, email, phone, discountCode, currency, tracking, carrier, internalNotes string
 		var shipping []byte
 		var created time.Time
-		var total int64
-		if rows.Scan(&id, &ref, &status, &name, &email, &phone, &shipping, &total, &tracking, &created) == nil {
+		var shippedAt sql.NullTime
+		var paymentID, preferenceID, paymentStatus, paymentDetail sql.NullString
+		var paymentProcessed sql.NullTime
+		var shippingCost, subtotal, total, discount int64
+		if rows.Scan(&id, &ref, &status, &name, &email, &phone, &shipping, &shippingCost, &subtotal, &total, &discountCode, &discount, &currency, &tracking, &carrier, &shippedAt, &internalNotes, &created, &paymentID, &preferenceID, &paymentStatus, &paymentDetail, &paymentProcessed) == nil {
 			var address map[string]any
 			_ = json.Unmarshal(shipping, &address)
 			orderIDs = append(orderIDs, id)
-			items = append(items, map[string]any{"id": id, "external_reference": ref, "status": status, "customer_name": name, "customer_email": email, "customer_phone": phone, "shipping_address": address, "total_ars_cents": total, "tracking_number": tracking, "created_at": created, "items": []map[string]any{}})
+			item := map[string]any{
+				"id": id, "external_reference": ref, "status": status,
+				"customer_name": name, "customer_email": email, "customer_phone": phone,
+				"shipping_address": address, "shipping_cost_ars_cents": shippingCost,
+				"subtotal_ars_cents": subtotal, "total_ars_cents": total, "discount_code": discountCode,
+				"discount_ars_cents": discount, "currency": currency, "tracking_number": tracking,
+				"shipping_carrier": carrier, "internal_notes": internalNotes, "created_at": created,
+				"items": []map[string]any{},
+				"payment": map[string]any{
+					"mp_payment_id": maybeString(paymentID), "mp_preference_id": maybeString(preferenceID),
+					"mp_status": maybeString(paymentStatus), "mp_status_detail": maybeString(paymentDetail),
+					"processed_at": maybeTime(paymentProcessed),
+				},
+			}
+			if shippedAt.Valid {
+				item["shipped_at"] = shippedAt.Time
+			}
+			items = append(items, item)
 		}
 	}
 	itemsByOrder := h.orderItemsBatch(r, orderIDs)
@@ -714,17 +883,22 @@ type imageForm struct {
 	SortOrder int    `json:"sort_order"`
 }
 
-type discountCreateRequest struct {
+type orderUpdateRequest struct {
+	Status          string     `json:"status"`
+	TrackingNumber  string     `json:"tracking_number"`
+	ShippingCarrier string     `json:"shipping_carrier"`
+	ShippedAt       *time.Time `json:"shipped_at"`
+	InternalNotes   string     `json:"internal_notes"`
+}
+
+type discountWriteRequest struct {
 	Code          string     `json:"code"`
 	DiscountType  string     `json:"discount_type"`
 	DiscountValue int64      `json:"discount_value"`
 	MinOrderCents int64      `json:"min_order_cents"`
 	MaxUses       *int       `json:"max_uses"`
 	ExpiresAt     *time.Time `json:"expires_at"`
-}
-
-type discountUpdateRequest struct {
-	Active *bool `json:"active"`
+	Active        *bool      `json:"active"`
 }
 
 type homepageRequest struct {
@@ -751,6 +925,7 @@ type siteSettings struct {
 	FAQItems                []faqItem `json:"faq_items"`
 	ReturnPolicyHTML        string    `json:"return_policy_html"`
 	NavbarProductCategories []navItem `json:"navbar_product_categories"`
+	LowStockThreshold       int       `json:"low_stock_threshold"`
 }
 
 type faqItem struct {
@@ -785,6 +960,7 @@ func defaultSiteSettings() siteSettings {
 			{Label: "Línea Oriental", Href: "/fragrances?family=Oriental"},
 			{Label: "Línea Amaderada", Href: "/fragrances?family=Amaderado"},
 		},
+		LowStockThreshold: 5,
 	}
 }
 
@@ -794,6 +970,20 @@ func (h Handler) actor(r *http.Request) string {
 		return "unknown"
 	}
 	return username
+}
+
+func maybeString(v sql.NullString) string {
+	if !v.Valid {
+		return ""
+	}
+	return v.String
+}
+
+func maybeTime(v sql.NullTime) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Time
 }
 
 func CleanCode(v string) string { return strings.ToUpper(strings.TrimSpace(v)) }

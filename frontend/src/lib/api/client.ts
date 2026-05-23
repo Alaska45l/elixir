@@ -85,8 +85,10 @@ export type ShippingZone = {
   zone_name: string;
   province_codes: string[];
   base_cost_cents: number;
+  per_kg_cents: number;
   estimated_days_min: number;
   estimated_days_max: number;
+  active: boolean;
 };
 
 export type FAQItem = { question: string; answer: string };
@@ -104,6 +106,7 @@ export type SiteSettings = {
   faq_items: FAQItem[];
   return_policy_html: string;
   navbar_product_categories: NavItem[];
+  low_stock_threshold: number;
 };
 
 export type ShippingQuoteRequest = {
@@ -132,7 +135,15 @@ export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typ
     ...init
   });
   if (!res.ok) {
-    throw new Error((await res.text()) || 'Error de API');
+    const text = await res.text();
+    let message = '';
+    try {
+      const body = JSON.parse(text) as { error?: string };
+      message = body.error ?? '';
+    } catch {
+      message = text;
+    }
+    throw new Error(message || 'No se pudo completar la operación');
   }
   return (await res.json()) as T;
 }
@@ -182,9 +193,9 @@ export async function getShippingZones(fetcher: typeof fetch = fetch): Promise<S
     return data.items;
   } catch {
     return [
-      { id: 'caba', zone_name: 'CABA', province_codes: ['CF'], base_cost_cents: 0, estimated_days_min: 0, estimated_days_max: 3 },
-      { id: 'gba', zone_name: 'Gran Buenos Aires', province_codes: ['BA'], base_cost_cents: 250000, estimated_days_min: 1, estimated_days_max: 4 },
-      { id: 'interior', zone_name: 'Interior', province_codes: [], base_cost_cents: 420000, estimated_days_min: 3, estimated_days_max: 7 }
+      { id: 'caba', zone_name: 'CABA', province_codes: ['CF'], base_cost_cents: 0, per_kg_cents: 0, estimated_days_min: 0, estimated_days_max: 3, active: true },
+      { id: 'gba', zone_name: 'Gran Buenos Aires', province_codes: ['BA'], base_cost_cents: 250000, per_kg_cents: 0, estimated_days_min: 1, estimated_days_max: 4, active: true },
+      { id: 'interior', zone_name: 'Interior', province_codes: [], base_cost_cents: 420000, per_kg_cents: 0, estimated_days_min: 3, estimated_days_max: 7, active: true }
     ];
   }
 }
@@ -230,7 +241,8 @@ export const defaultSettings: SiteSettings = {
     { label: 'Fragancias Femeninas', href: '/fragrances?gender=Femenino' },
     { label: 'Línea Oriental', href: '/fragrances?family=Oriental' },
     { label: 'Línea Amaderada', href: '/fragrances?family=Amaderado' }
-  ]
+  ],
+  low_stock_threshold: 5
 };
 
 export const demoProducts: Product[] = [

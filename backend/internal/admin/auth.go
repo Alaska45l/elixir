@@ -24,8 +24,9 @@ func (a AuthService) Login(ctx context.Context, remoteAddr, username, password s
 	if a.Pool == nil {
 		return false, nil
 	}
+	username = strings.TrimSpace(username)
 	var hash string
-	err := a.Pool.QueryRow(ctx, `SELECT password_hash FROM admin_users WHERE username=$1`, strings.TrimSpace(username)).Scan(&hash)
+	err := a.Pool.QueryRow(ctx, `SELECT password_hash FROM admin_users WHERE username=$1`, username).Scan(&hash)
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) != nil {
 		if a.Limiter != nil {
 			a.Limiter.RegisterFailure(clientIP(remoteAddr))

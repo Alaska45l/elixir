@@ -5,6 +5,8 @@
   import { toast } from '$lib/stores/toast';
 
   let form: SiteSettings = structuredClone(defaultSettings);
+  let error = '';
+  let saving = false;
 
   onMount(async () => {
     try {
@@ -23,8 +25,16 @@
   }
 
   async function save() {
-    await apiFetch('/api/admin/settings', { method: 'PUT', body: JSON.stringify(form) });
-    toast.push('Configuración guardada');
+    error = '';
+    saving = true;
+    try {
+      await apiFetch('/api/admin/settings', { method: 'PUT', body: JSON.stringify(form) });
+      toast.push('Configuración guardada');
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'No se pudo guardar la configuración';
+    } finally {
+      saving = false;
+    }
   }
 </script>
 
@@ -42,8 +52,13 @@
     <div class="grid-2">
       <label class="field"><span>Instagram</span><input class="input" bind:value={form.footer_instagram_url} placeholder="https://instagram.com/..." /></label>
       <label class="field"><span>TikTok</span><input class="input" bind:value={form.footer_tiktok_url} placeholder="https://tiktok.com/@..." /></label>
-      <label class="field"><span>WhatsApp</span><input class="input" bind:value={form.footer_whatsapp_url} placeholder="https://wa.me/..." /></label>
+      <label class="field"><span>WhatsApp</span><input class="input" bind:value={form.footer_whatsapp_url} placeholder="https://wa.me/549..." /><small>Usá el enlace de WhatsApp que abre el chat del negocio.</small></label>
     </div>
+  </section>
+
+  <section>
+    <h2>Stock</h2>
+    <label class="field"><span>Aviso de stock bajo</span><input class="input" type="number" min="1" bind:value={form.low_stock_threshold} /><small>El panel marcará variantes con este stock o menos.</small></label>
   </section>
 
   <section>
@@ -83,7 +98,8 @@
     {/each}
   </section>
 
-  <button class="btn primary" type="submit">Guardar configuración</button>
+  {#if error}<p class="error">{error}</p>{/if}
+  <button class="btn primary" type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar configuración'}</button>
 </form>
 
 <style>
@@ -91,6 +107,8 @@
   section { border-top: 1px solid var(--color-border); padding-top: 22px; display: grid; gap: 16px; }
   h2 { margin: 0; font-size: 1rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .12em; }
   .check { display: flex; gap: 10px; color: var(--color-text-muted); }
+  small { color: var(--color-text-muted); }
+  .error { color: var(--color-danger-soft); margin: 0; }
   .row-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
   .repeat-row, .nav-row { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 12px; align-items: end; }
   .repeat-row button, .nav-row button { border: 1px solid var(--color-border); background: transparent; color: var(--color-text); min-height: 46px; padding: 0 14px; }

@@ -28,6 +28,7 @@
   form.variants = form.variants.map((variant) => ({ ...variant, weight_grams: variant.weight_grams ?? 200 }));
   let notes = { top: '', heart: '', base: '' };
   let error = '';
+  let saving = false;
 
   function nameInput() {
     if (!form.slug) form.slug = slugify(form.name);
@@ -57,26 +58,44 @@
   }
   async function save() {
     error = '';
+    saving = true;
     if (!form.name.trim() || !form.slug.trim()) {
       error = 'Completá nombre y slug.';
+      saving = false;
       return;
     }
     if (!form.variants.length || form.variants.some((variant) => variant.size_ml <= 0 || variant.price_ars_cents <= 0 || variant.weight_grams <= 0)) {
       error = 'Cada variante necesita tamaño, precio y peso válidos.';
+      saving = false;
       return;
     }
-    await apiFetch(id ? `/api/admin/products/${id}` : '/api/admin/products', {
-      method: id ? 'PUT' : 'POST',
-      body: JSON.stringify(form)
-    });
-    toast.push('Producto guardado');
-    location.href = '/admin/productos';
+    if (!form.images.some((image) => image.url.trim())) {
+      error = 'Agregá al menos una imagen pública HTTPS.';
+      saving = false;
+      return;
+    }
+    try {
+      await apiFetch(id ? `/api/admin/products/${id}` : '/api/admin/products', {
+        method: id ? 'PUT' : 'POST',
+        body: JSON.stringify(form)
+      });
+      toast.push('Producto guardado');
+      location.href = '/admin/productos';
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'No se pudo guardar el producto';
+    } finally {
+      saving = false;
+    }
   }
   async function deleteProduct() {
     if (!id || !confirm('¿Eliminar este producto?')) return;
-    await apiFetch(`/api/admin/products/${id}`, { method: 'DELETE' });
-    toast.push('Producto eliminado');
-    location.href = '/admin/productos';
+    try {
+      await apiFetch(`/api/admin/products/${id}`, { method: 'DELETE' });
+      toast.push('Producto eliminado');
+      location.href = '/admin/productos';
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'No se pudo eliminar el producto';
+    }
   }
 </script>
 
@@ -107,6 +126,7 @@
 
   <section class="panel">
     <div class="row-head"><h2>Variantes</h2><button class="btn" type="button" on:click={addVariant}>+</button></div>
+    {#if form.variants.length === 0}<p class="empty">Agregá al menos una variante para vender este producto.</p>{/if}
     {#each form.variants as variant, i}
       <div class="variant-row">
         <label class="field compact"><span>ml</span><input class="input" type="number" bind:value={variant.size_ml} placeholder="50" /></label>
@@ -121,10 +141,12 @@
 
   <section class="panel">
     <div class="row-head"><h2>Imágenes</h2><button class="btn" type="button" on:click={addImage}>+</button></div>
+    <p class="hint">Pegá enlaces públicos HTTPS de imágenes ya subidas. El proyecto todavía no tiene almacenamiento durable conectado para subir archivos desde el panel.</p>
+    {#if form.images.length === 0}<p class="empty">Agregá una imagen principal para que el producto se vea en el catálogo.</p>{/if}
     {#each form.images as image, i}
       <div class="image-row">
         {#if image.url}<img src={image.url} alt={image.alt_text} />{/if}
-        <input class="input" bind:value={image.url} placeholder="URL de imagen" title="Pegá una URL pública HTTPS." />
+        <input class="input" bind:value={image.url} placeholder="https://..." title="Pegá una URL pública HTTPS." />
         <input class="input" bind:value={image.alt_text} placeholder="Texto alternativo" />
         <label><input type="radio" name="primary" checked={image.is_primary} on:change={() => setPrimary(i)} /> Principal</label>
         <button type="button" on:click={() => form.images = form.images.filter((_, index) => index !== i)}>×</button>
@@ -134,7 +156,7 @@
 
   <div class="actions">
     {#if error}<p class="error">{error}</p>{/if}
-    <button class="btn primary" type="submit">Guardar producto</button>
+    <button class="btn primary" type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar producto'}</button>
     {#if id}<button class="btn danger" type="button" on:click={deleteProduct}>Eliminar</button>{/if}
   </div>
 </form>
@@ -148,6 +170,7 @@
   .tags button, .variant-row button, .image-row button { border: 1px solid var(--color-border); color: var(--color-text); background: transparent; min-height: 36px; }
   .row-head { display: flex; justify-content: space-between; align-items: center; }
   small { color: var(--color-text-muted); font-size: .74rem; line-height: 1.4; }
+  .hint, .empty { margin: 0; color: var(--color-text-muted); }
   .compact { gap: 5px; }
   .variant-row { display: grid; grid-template-columns: 80px 130px 90px 90px 1fr 44px; gap: 10px; align-items: end; }
   .image-row { display: grid; grid-template-columns: 72px 1fr 1fr 120px 44px; gap: 10px; align-items: center; }
