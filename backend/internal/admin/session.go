@@ -16,6 +16,7 @@ type SessionManager struct {
 	Secret   string
 	Duration time.Duration
 	Secure   bool
+	SameSite http.SameSite
 }
 
 func (s SessionManager) Create(username string, now time.Time) string {
@@ -48,12 +49,12 @@ func (s SessionManager) Validate(token string, now time.Time) (string, bool) {
 func (s SessionManager) SetCookie(w http.ResponseWriter, username string) {
 	http.SetCookie(w, &http.Cookie{
 		Name: SessionCookie, Value: s.Create(username, time.Now()), Path: "/",
-		HttpOnly: true, Secure: s.Secure, SameSite: http.SameSiteStrictMode, MaxAge: int(s.Duration.Seconds()),
+		HttpOnly: true, Secure: s.Secure, SameSite: s.sameSite(), MaxAge: int(s.Duration.Seconds()),
 	})
 }
 
 func (s SessionManager) ClearCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: "", Path: "/", HttpOnly: true, Secure: s.Secure, SameSite: http.SameSiteStrictMode, MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: "", Path: "/", HttpOnly: true, Secure: s.Secure, SameSite: s.sameSite(), MaxAge: -1})
 }
 
 func (s SessionManager) Username(r *http.Request) (string, error) {
@@ -71,4 +72,25 @@ func (s SessionManager) sign(payload string) string {
 	mac := hmac.New(sha256.New, []byte(s.Secret))
 	mac.Write([]byte(payload))
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+func (s SessionManager) sameSite() http.SameSite {
+	if s.SameSite != 0 {
+		return s.SameSite
+	}
+	return http.SameSiteStrictMode
+}
+
+func ResolveSameSite(value string, secure bool) http.SameSite {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "none":
+		if secure {
+			return http.SameSiteNoneMode
+		}
+		return http.SameSiteLaxMode
+	case "lax":
+		return http.SameSiteLaxMode
+	default:
+		return http.SameSiteStrictMode
+	}
 }

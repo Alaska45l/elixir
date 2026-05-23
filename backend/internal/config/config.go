@@ -16,6 +16,7 @@ type Config struct {
 	DatabaseURL       string
 	SessionSecret     string
 	SessionDuration   time.Duration
+	SessionSameSite   string
 	MPAccessToken     string
 	MPWebhookSecret   string
 	AllowedOrigins    []string
@@ -45,6 +46,7 @@ func Load() Config {
 		DatabaseURL:       databaseURL,
 		SessionSecret:     env("SESSION_SECRET", "dev-secret-change-me-dev-secret-change-me-dev-secret-change-me"),
 		SessionDuration:   time.Duration(hours) * time.Hour,
+		SessionSameSite:   env("SESSION_SAME_SITE", "strict"),
 		MPAccessToken:     os.Getenv("MP_ACCESS_TOKEN"),
 		MPWebhookSecret:   os.Getenv("MP_WEBHOOK_SECRET"),
 		AllowedOrigins:    split(env("ALLOWED_ORIGINS", "http://localhost:5173")),

@@ -37,7 +37,8 @@ func main() {
 
 	loginLimiter := middleware.NewLoginLimiter(5, 10*time.Minute)
 	apiLimiter := middleware.NewAPILimiter(60, time.Minute)
-	sessions := admin.SessionManager{Secret: cfg.SessionSecret, Duration: cfg.SessionDuration, Secure: admin.IsSecureEnv(cfg.AppEnv)}
+	secureCookies := admin.IsSecureEnv(cfg.AppEnv)
+	sessions := admin.SessionManager{Secret: cfg.SessionSecret, Duration: cfg.SessionDuration, Secure: secureCookies, SameSite: admin.ResolveSameSite(cfg.SessionSameSite, secureCookies)}
 	discountSvc := discount.Service{Repo: discount.Repository{Pool: pool}}
 	orderSvc := orders.Service{Repo: orders.DBRepository{Pool: pool}, Discount: discountSvc}
 

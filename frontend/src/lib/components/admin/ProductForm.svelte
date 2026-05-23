@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { apiFetch } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import type { ProductFormValue } from '$lib/types/product-form';
@@ -24,11 +25,29 @@
     images: [{ url: '', alt_text: '', is_primary: true, sort_order: 0 }]
   };
 
-  let form: ProductFormValue = product ? structuredClone(product) : structuredClone(blank);
-  form.variants = form.variants.map((variant) => ({ ...variant, weight_grams: variant.weight_grams ?? 200 }));
+  function prepare(value: ProductFormValue) {
+    const next = structuredClone(value);
+    next.variants = next.variants.map((variant) => ({ ...variant, weight_grams: variant.weight_grams ?? 200 }));
+    return next;
+  }
+
+  let form: ProductFormValue = prepare(product ?? blank);
   let notes = { top: '', heart: '', base: '' };
   let error = '';
   let saving = false;
+  let loading = Boolean(id && !product);
+
+  onMount(async () => {
+    if (!id || product) return;
+    try {
+      const data = await apiFetch<{ product: ProductFormValue }>(`/api/admin/products/${id}`);
+      form = prepare(data.product);
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'No se pudo cargar el producto';
+    } finally {
+      loading = false;
+    }
+  });
 
   function nameInput() {
     if (!form.slug) form.slug = slugify(form.name);
@@ -99,6 +118,9 @@
   }
 </script>
 
+{#if loading}
+  <p class="empty">Cargando producto...</p>
+{:else}
 <form class="form" on:submit|preventDefault={save}>
   <div class="grid-2">
     <label class="field"><span>Nombre comercial</span><input class="input" required bind:value={form.name} on:input={nameInput} /><small>Nombre visible en catálogo, carrito y orden.</small></label>
@@ -160,6 +182,7 @@
     {#if id}<button class="btn danger" type="button" on:click={deleteProduct}>Eliminar</button>{/if}
   </div>
 </form>
+{/if}
 
 <style>
   .form { display: grid; gap: 22px; max-width: 980px; }
