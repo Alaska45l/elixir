@@ -128,7 +128,8 @@ export type ShippingQuoteOption = {
 export type ListResponse<T> = { items: T[]; total?: number; limit?: number; offset?: number };
 
 export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typeof fetch = fetch): Promise<T> {
-  const base = env.PUBLIC_API_URL ?? 'http://localhost:8080';
+  const configuredBase = env.PUBLIC_API_URL?.trim() ?? '';
+  const base = path.startsWith('/api/admin') ? '' : configuredBase;
   const res = await fetcher(`${base}${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },

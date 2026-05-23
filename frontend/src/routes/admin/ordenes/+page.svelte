@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { env } from '$env/dynamic/public';
   import { onMount } from 'svelte';
   import { apiFetch } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
@@ -54,7 +53,7 @@
     }
   }
   function exportCSV() {
-    window.open(`${env.PUBLIC_API_URL ?? 'http://localhost:8080'}/api/admin/orders/export`, '_blank');
+    window.open('/api/admin/orders/export', '_blank');
   }
   function label(status: string) {
     return statuses.find(([value]) => value === status)?.[1] ?? status;
