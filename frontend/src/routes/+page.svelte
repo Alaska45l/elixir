@@ -1,8 +1,30 @@
 <script lang="ts">
+  import { onDestroy, onMount } from 'svelte';
+  import { fade } from 'svelte/transition';
   import ProductGrid from '$lib/components/ProductGrid.svelte';
   import { reveal } from '$lib/utils/reveal';
   import type { PageData } from './$types';
   export let data: PageData;
+
+  let collectionImageIndices: number[] = [];
+  let cycleInterval: ReturnType<typeof setInterval> | undefined;
+
+  $: if (data.collections) {
+    collectionImageIndices = data.collections.map(() => 0);
+  }
+
+  onMount(() => {
+    cycleInterval = setInterval(() => {
+      collectionImageIndices = collectionImageIndices.map((current, index) => {
+        const total = data.collections[index]?.images.length ?? 1;
+        return total > 1 ? (current + 1) % total : 0;
+      });
+    }, 8000);
+  });
+
+  onDestroy(() => {
+    if (cycleInterval) clearInterval(cycleInterval);
+  });
 </script>
 
 <svelte:head>
@@ -45,32 +67,40 @@
   <img src={data.homepage.editorial_image_url} alt="Editorial ELIXIR" />
 </section>
 
-<section class="shipping-strip hairline">
-  <div class="container" use:reveal>
-    <span>◇</span>
-    <div><h2>Lorem ipsum</h2><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p></div>
-  </div>
-</section>
-
-<section class="container collections-section" use:reveal>
-  <p class="eyebrow">Colecciones</p>
-  <div class="gold-rule"></div>
-  <h2 class="display collections-title">Lorem ipsum dolor</h2>
-  <div class="collections-grid">
-    <a class="collection-card hero-card" href="/fragrances?family=Oriental">
-      <img src="https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=900&q=85" alt="Lorem ipsum" />
-      <span class="collection-copy"><strong>Lorem ipsum</strong><em>Explorar →</em></span>
-    </a>
-    <a class="collection-card" href="/fragrances?family=Amaderado">
-      <img src="https://images.unsplash.com/photo-1624811742200-69166e7b7bcc?auto=format&fit=crop&w=900&q=85" alt="Dolor sit amet" />
-      <span class="collection-copy"><strong>Dolor sit amet</strong><em>Explorar →</em></span>
-    </a>
-    <a class="collection-card" href="/fragrances?family=Gourmand">
-      <img src="https://images.unsplash.com/photo-1586495777744-4413f21062fa?auto=format&fit=crop&w=900&q=85" alt="Consectetur adipiscing" />
-      <span class="collection-copy"><strong>Consectetur adipiscing</strong><em>Explorar →</em></span>
-    </a>
-  </div>
-</section>
+{#if data.collections.length}
+  <section class="container collections-section" use:reveal>
+    <p class="eyebrow">Colecciones</p>
+    <div class="gold-rule"></div>
+    <h2 class="display collections-title">Explorá por familia</h2>
+    <div
+      class="collections-grid"
+      class:single-collection-grid={data.collections.length === 1}
+      class:two-collection-grid={data.collections.length === 2}
+      class:four-collection-grid={data.collections.length >= 4}
+    >
+      {#each data.collections as collection, i}
+        <a
+          class="collection-card"
+          class:hero-card={i === 0}
+          class:wide-card={i === 3}
+          href={collection.href}
+        >
+          {#key collection.images[collectionImageIndices[i] ?? 0]}
+            <img
+              src={collection.images[collectionImageIndices[i] ?? 0]}
+              alt={collection.family}
+              transition:fade={{ duration: 800 }}
+            />
+          {/key}
+          <span class="collection-copy">
+            <strong>{collection.family}</strong>
+            <em>Explorar →</em>
+          </span>
+        </a>
+      {/each}
+    </div>
+  </section>
+{/if}
 
 <style>
   .hero {
@@ -123,23 +153,33 @@
   .editorial {
     display: grid;
     grid-template-columns: .9fr 1.1fr;
-    gap: 56px;
-    align-items: center;
+    gap: 0;
+    align-items: stretch;
     border-radius: 16px;
     background: var(--color-surface);
     padding: 48px;
+    padding-right: 0;
     overflow: hidden;
     box-shadow: 0 4px 32px rgba(0,0,0,0.2);
   }
-  .editorial .copy { padding-left: 0; }
+  .editorial .copy {
+    padding-left: 0;
+    padding-right: 48px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
   .editorial p:last-child { color: var(--color-text-muted); font-size: 1.2rem; line-height: 1.8; }
-  .editorial img { width: calc(100% + 48px); aspect-ratio: 5 / 4; object-fit: cover; margin: -48px -48px -48px 0; }
-  .shipping-strip { margin: 80px 0; padding: 30px 0; }
-  .shipping-strip .container { display: flex; gap: 18px; align-items: center; }
-  .shipping-strip span { color: var(--color-gold); font-size: .7rem; opacity: .7; transform: rotate(45deg); display: inline-block; width: 8px; height: 8px; border: 1px solid var(--color-gold); flex-shrink: 0; text-indent: -999px; overflow: hidden; }
-  .shipping-strip h2 { margin: 0; font-size: 1.3rem; }
-  .shipping-strip p { margin: 4px 0 0; color: var(--color-text-muted); }
-  .collections-section { padding-bottom: 28px; }
+  .editorial img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0 16px 16px 0;
+  }
+  .collections-section {
+    margin-top: clamp(64px, 8vw, 104px);
+    padding-bottom: 28px;
+  }
   .collections-title { margin: 0 0 28px; font-size: clamp(2.2rem, 5vw, 4.4rem); line-height: .96; }
   .collections-grid {
     display: grid;
@@ -149,6 +189,7 @@
   }
   .collection-card {
     position: relative;
+    display: block;
     overflow: hidden;
     min-height: 260px;
     border-radius: 16px;
@@ -162,7 +203,14 @@
     pointer-events: none;
   }
   .hero-card { grid-row: 1 / 3; min-height: 536px; }
-  .collection-card img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+  .collection-card img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .6s ease, opacity .8s ease;
+  }
   .collection-card:hover img { transform: scale(1.06); }
   .collection-card:hover::after { background: linear-gradient(to top, rgba(13,31,21,0.92) 0%, rgba(13,31,21,0.18) 62%, transparent 100%); }
   .collection-copy {
@@ -193,17 +241,80 @@
     border-bottom: 1px solid transparent;
   }
   .collection-card:hover .collection-copy em { border-bottom-color: var(--color-gold); }
+  .four-collection-grid {
+    grid-template-columns: 1.1fr 0.75fr 0.9fr;
+    grid-template-rows: repeat(2, minmax(260px, 1fr));
+    grid-template-areas:
+      "hero stack-top wide"
+      "hero stack-bottom wide";
+  }
+  .four-collection-grid .hero-card {
+    grid-area: hero;
+  }
+  .four-collection-grid .collection-card:nth-child(2) {
+    grid-area: stack-top;
+  }
+  .four-collection-grid .collection-card:nth-child(3) {
+    grid-area: stack-bottom;
+  }
+  .four-collection-grid .wide-card {
+    grid-area: wide;
+    min-height: 536px;
+  }
+  .single-collection-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+  .single-collection-grid .hero-card {
+    grid-row: auto;
+    min-height: 360px;
+  }
+  .two-collection-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+  }
+  .two-collection-grid .hero-card {
+    grid-row: auto;
+  }
   @media (max-width: 600px) {
     .hero { min-height: 560px; height: 80svh; }
     h1 { font-size: clamp(2.8rem, 12vw, 5rem); }
     .actions { flex-direction: column; align-items: flex-start; }
   }
   @media (max-width: 860px) {
-    .editorial { grid-template-columns: 1fr; }
+    .editorial {
+      grid-template-columns: 1fr;
+      padding: 32px;
+      padding-bottom: 0;
+    }
+    .editorial .copy {
+      padding-right: 0;
+      padding-bottom: 32px;
+    }
+    .editorial img {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 9;
+      border-radius: 0 0 16px 16px;
+    }
     .collections-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
     .collection-card, .hero-card { grid-row: auto; min-height: 280px; }
-    .editorial { padding: 32px; }
-    .editorial img { margin: 0 -48px -48px; width: calc(100% + 96px); }
+    .single-collection-grid,
+    .two-collection-grid,
+    .four-collection-grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto;
+      grid-template-areas: none;
+    }
+    .four-collection-grid .hero-card,
+    .four-collection-grid .collection-card:nth-child(2),
+    .four-collection-grid .collection-card:nth-child(3),
+    .four-collection-grid .wide-card {
+      grid-area: auto;
+      grid-column: auto;
+      grid-row: auto;
+      min-height: 280px;
+    }
   }
 
   @media (prefers-reduced-motion: no-preference) {

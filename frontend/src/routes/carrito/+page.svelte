@@ -2,6 +2,7 @@
   import { env } from '$env/dynamic/public';
   import { apiFetch, quoteShipping } from '$lib/api/client';
   import type { CartValidation, DiscountValidation, Order, ShippingQuoteOption } from '$lib/api/client';
+  import QuantityStepper from '$lib/components/QuantityStepper.svelte';
   import { cart, cartSubtotal } from '$lib/stores/cart';
   import { toast } from '$lib/stores/toast';
   import { formatARS } from '$lib/utils/currency';
@@ -83,13 +84,6 @@
     const summary = $cart.map((i) => `${i.productName} ${i.sizeML}ml x${i.quantity}`).join(', ');
     return `https://wa.me/${env.PUBLIC_WHATSAPP_NUMBER ?? '5491100000000'}?text=${encodeURIComponent(`Hola, quiero consultar por mi carrito: ${summary}`)}`;
   }
-  function updateQuantity(event: Event, variantId: string) {
-    const input = event.currentTarget as HTMLInputElement;
-    const next = Number(input.value);
-    const clamped = Math.max(1, Math.min(99, Number.isFinite(next) ? next : 1));
-    cart.setQuantity(variantId, clamped);
-    input.value = String(clamped);
-  }
 </script>
 
 <svelte:head><title>Carrito | ELIXIR Exclusive</title></svelte:head>
@@ -108,12 +102,33 @@
   <div class="cart-page">
     <div class="lines">
       {#each $cart as item}
-        <article>
-          <img src={item.image} alt={item.productName} />
-          <div><h2>{item.productName}</h2><p>{item.sizeML}ml · {formatARS(item.unitPriceCents)}</p></div>
-          <input class="input" type="number" min="1" max="99" value={item.quantity} on:input={(event) => updateQuantity(event, item.variantId)} />
-          <strong>{formatARS(item.quantity * item.unitPriceCents)}</strong>
-          <button type="button" on:click={() => cart.remove(item.variantId)}>Quitar</button>
+        <article class="cart-line">
+          <a class="line-image" href={`/fragrances/${item.productSlug}`}>
+            <img src={item.image} alt={item.productName} />
+          </a>
+          <div class="line-details">
+            <a class="line-name" href={`/fragrances/${item.productSlug}`}>
+              <h2>{item.productName}</h2>
+            </a>
+            <p class="line-variant">{item.sizeML}ml</p>
+            <p class="line-unit-price">{formatARS(item.unitPriceCents)} c/u</p>
+          </div>
+          <div class="line-quantity">
+            <QuantityStepper
+              value={item.quantity}
+              min={1}
+              max={99}
+              onchange={(value) => cart.setQuantity(item.variantId, value)}
+            />
+          </div>
+          <div class="line-total">
+            <strong>{formatARS(item.quantity * item.unitPriceCents)}</strong>
+          </div>
+          <button class="line-remove" type="button" on:click={() => cart.remove(item.variantId)} aria-label="Quitar producto">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+          </button>
         </article>
       {/each}
     </div>
@@ -148,12 +163,88 @@
 
 <style>
   .cart-page { display: grid; grid-template-columns: 1fr 390px; gap: 52px; align-items: start; }
-  .lines { display: grid; gap: 18px; }
-  article { display: grid; grid-template-columns: 92px 1fr 74px auto auto; gap: 16px; align-items: center; border-top: 1px solid var(--color-border); padding-top: 18px; }
-  article img { width: 92px; height: 110px; object-fit: cover; }
-  h2 { margin: 0; font-size: 1rem; }
-  p { margin: 6px 0 0; color: var(--color-text-muted); }
-  article button { background: transparent; border: 0; border-radius: 6px; color: var(--color-gold); }
+  .lines { display: grid; gap: 0; }
+  .cart-line {
+    display: grid;
+    grid-template-columns: 110px 1fr auto auto 40px;
+    grid-template-rows: auto;
+    gap: 20px;
+    align-items: center;
+    padding: 24px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .cart-line:first-child { padding-top: 0; }
+  .line-image {
+    display: block;
+    width: 110px;
+    height: 130px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--color-surface);
+    flex-shrink: 0;
+  }
+  .line-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  .line-image:hover img { transform: scale(1.05); }
+  .line-details {
+    display: grid;
+    gap: 4px;
+    align-self: center;
+    min-width: 0;
+  }
+  .line-name { color: var(--color-text); }
+  .line-name h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .line-name:hover h2 { color: var(--color-gold); }
+  .line-variant {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+  }
+  .line-unit-price {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+  }
+  .line-quantity {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .line-total {
+    text-align: right;
+    min-width: 100px;
+  }
+  .line-total strong {
+    color: var(--color-text);
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+  .line-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .line-remove:hover {
+    color: var(--color-danger-soft);
+    background: rgba(224,163,154,0.08);
+  }
   .summary { display: grid; gap: 16px; border-radius: 14px; padding: 22px; background: var(--color-surface); box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
   .compact { gap: 12px; }
   .discount { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
@@ -167,5 +258,38 @@
   .totals strong { color: var(--color-gold); font-size: 1.35rem; }
   .empty { min-height: 50vh; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
   .empty h2 { font-size: clamp(2.8rem, 6vw, 5rem); margin: 0; }
-  @media (max-width: 920px) { .cart-page, article { grid-template-columns: 1fr; } }
+  @media (max-width: 920px) {
+    .cart-page {
+      grid-template-columns: 1fr;
+      gap: 40px;
+    }
+    .cart-line {
+      position: relative;
+      grid-template-columns: 90px 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 12px 16px;
+    }
+    .line-image {
+      grid-row: 1 / 3;
+      width: 90px;
+      height: 108px;
+    }
+    .line-details {
+      grid-column: 2 / 4;
+      padding-right: 44px;
+    }
+    .line-quantity {
+      grid-column: 2;
+      justify-content: flex-start;
+    }
+    .line-total {
+      text-align: right;
+      min-width: auto;
+    }
+    .line-remove {
+      position: absolute;
+      top: 24px;
+      right: 0;
+    }
+  }
 </style>
