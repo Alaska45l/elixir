@@ -247,41 +247,259 @@ export const defaultSettings: SiteSettings = {
   low_stock_threshold: 5
 };
 
-export const demoProducts: Product[] = [
-  makeProduct('nocturno-oud', 'Nocturno Oud', 'Lorem ipsum dolor sit amet', 'Amaderado', 8900000, 4, 'https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('ambar-de-recoleta', 'Ámbar de Recoleta', 'Consectetur adipiscing elit', 'Oriental', 7600000, 12, 'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('flor-de-noche', 'Flor de Noche', 'Sed do eiusmod tempor', 'Floral', 8200000, 3, 'https://images.unsplash.com/photo-1616604426203-b9baf4ac29d2?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('citrino-frio', 'Citrino Frío', 'Incididunt ut labore', 'Cítrico', 6900000, 8, 'https://images.unsplash.com/photo-1609541657971-7a22e8e76219?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('gourmand-reserva', 'Gourmand Reserva', 'Et dolore magna aliqua', 'Gourmand', 9300000, 2, 'https://images.unsplash.com/photo-1590736969955-71cc94901144?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('fresco-sur', 'Fresco Sur', 'Ut enim ad minim veniam', 'Fresco', 7100000, 0, 'https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=900&q=90')
-];
+type DemoProductSeed = {
+  slug: string;
+  name: string;
+  tagline: string;
+  description: string;
+  family: string;
+  gender: string;
+  concentration: string;
+  top: string[];
+  heart: string[];
+  base: string[];
+  price: number;
+  stock: number;
+  image: string;
+};
 
-function makeProduct(slug: string, name: string, tagline: string, family: string, price: number, stock: number, image: string): Product {
-  const id = slug;
+export const demoProducts: Product[] = [
+  {
+    slug: 'miss-armaf-chic',
+    name: 'Miss Armaf Chic',
+    tagline: 'Frutas brillantes, cítricos dulces y flores limpias',
+    description: 'Apertura de frutilla, frambuesa, pera y cítricos sobre jazmín, peonía y azahar; secado de vainilla, musk, cedro, ambroxan y musgo.',
+    family: 'Cítrico',
+    gender: 'Femenino',
+    concentration: 'EDP',
+    top: ['Frutilla', 'Frambuesa', 'Pera', 'Naranja', 'Mandarina', 'Bergamota', 'Calone'],
+    heart: ['Jazmín', 'Peonía', 'Azahar'],
+    base: ['Patchouli', 'Musk', 'Vainilla', 'Ambroxan', 'Cedro', 'Musgo'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://armaf.com/cdn/shop/files/armaf-1design-2025-11-18T235013.146.png?v=1763491870&width=1080'
+  },
+  {
+    slug: 'miss-armaf-catwalk',
+    name: 'Miss Armaf Catwalk',
+    tagline: 'Mandarina fresca, durazno floral y musk dulce',
+    description: 'Un perfil cítrico floral con salida de mandarina, naranja y cítricos, corazón de durazno, jazmín y lirio, y fondo de vainilla, musk y ambroxan.',
+    family: 'Cítrico',
+    gender: 'Femenino',
+    concentration: 'EDP',
+    top: ['Mandarina', 'Naranja', 'Cítricos'],
+    heart: ['Durazno', 'Jazmín', 'Lirio'],
+    base: ['Vainilla', 'Musk', 'Ambroxan'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://armafperfume.us/cdn/shop/files/9ad438dce22642d7b50a7bd7a9c81743_tplv-omjb5zjo8w-resize-jpeg_800_800.jpg?v=1751506753&width=900'
+  },
+  {
+    slug: 'creme-of-clouds',
+    name: 'Creme of Clouds',
+    tagline: 'Crema batida, azúcar quemada y vainilla suave',
+    description: 'Gourmand cremoso con crema batida, azúcar tostada, leche de coco y vainilla; una estela dulce y lactónica con sensación de caramelo.',
+    family: 'Gourmand',
+    gender: 'Unisex',
+    concentration: 'EDP',
+    top: ['Crema batida', 'Azúcar quemada'],
+    heart: ['Leche de coco', 'Vainilla'],
+    base: ['Caramelo', 'Musk'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://perfumeoriental.com/cdn/shop/files/creme-of-clouds-fragrance-world-edp-perfume-oriental.webp?v=1771523950&width=900'
+  },
+  {
+    slug: 'lattafa-eclaire',
+    name: 'Lattafa Eclaire',
+    tagline: 'Caramelo cremoso, leche y vainilla con praliné',
+    description: 'Dulce gourmand de caramelo, leche y azúcar con corazón de miel y flores blancas, apoyado en vainilla, praliné y musk.',
+    family: 'Gourmand',
+    gender: 'Unisex',
+    concentration: 'EDP',
+    top: ['Caramelo', 'Leche', 'Azúcar'],
+    heart: ['Miel', 'Flores blancas'],
+    base: ['Vainilla', 'Praliné', 'Musk'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://www.lattafa-usa.com/cdn/shop/files/Eclaire-1_5803282e-ea5b-4de5-99a5-7d06f5cbae33.png?v=1747415649&width=1200'
+  },
+  {
+    slug: 'odyssey-aqua',
+    name: 'Odyssey Aqua',
+    tagline: 'Pomelo, naranja y menta sobre una base limpia amaderada',
+    description: 'Fragancia fresca de salida cítrica con pomelo, naranja y artemisia; evoluciona hacia lavanda y menta sobre ciprés, patchouli y ambroxan.',
+    family: 'Fresco',
+    gender: 'Masculino',
+    concentration: 'EDP',
+    top: ['Pomelo', 'Naranja', 'Artemisia'],
+    heart: ['Lavanda', 'Menta'],
+    base: ['Ciprés', 'Patchouli', 'Ambroxan'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://armaf.com/cdn/shop/files/image-2023-05-04T112339.859.jpg?v=1739111570&width=1200'
+  },
+  {
+    slug: 'nectar-of-ecstasy-v1',
+    name: 'Nectar of Ecstasy (Versión 1)',
+    tagline: 'Fruta jugosa, bergamota y vainilla caramelada',
+    description: 'Versión dulce y cremosa de Nectar of Ecstasy, con açai, arándano y bergamota sobre flores suaves, vainilla, caramelo y musk.',
+    family: 'Gourmand',
+    gender: 'Femenino',
+    concentration: 'EDP',
+    top: ['Açai', 'Arándano', 'Bergamota'],
+    heart: ['Fresia', 'Muguet'],
+    base: ['Vainilla', 'Caramelo', 'Musk'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://www.french-avenue-parfum.com/wp-content/uploads/2025/01/Eau-de-parfum-Nectar-of-Ecstasy.jpg'
+  },
+  {
+    slug: 'ameer-al-arab-imperium',
+    name: 'Ameer Al Arab Imperium',
+    tagline: 'Bergamota, jengibre y salvia con fondo amaderado',
+    description: 'Woody aromatic con apertura de bergamota, jengibre y salvia, corazón de manzana, cashmeran y geranio, y fondo de musk, ámbar y sándalo.',
+    family: 'Amaderado',
+    gender: 'Masculino',
+    concentration: 'EDP',
+    top: ['Bergamota', 'Jengibre', 'Salvia'],
+    heart: ['Manzana', 'Cashmeran', 'Geranio'],
+    base: ['Musk', 'Ámbar', 'Sándalo'],
+    price: 2750000,
+    stock: 10,
+    image: 'https://fimgs.net/mdimg/perfume-thumbs/375x500.100148.jpg'
+  },
+  {
+    slug: 'spicebomb-night-vision',
+    name: 'Spicebomb Night Vision',
+    tagline: 'Limón, especias negras y maderas verdes intensas',
+    description: 'EDP especiado amaderado con limón y especias negras, corazón verde resinoso con salvia e incienso, y base de abeto balsámico, cedro, patchouli y ládano.',
+    family: 'Amaderado',
+    gender: 'Masculino',
+    concentration: 'EDP',
+    top: ['Limón', 'Pimienta negra', 'Chile negro', 'Nuez moscada', 'Clavo'],
+    heart: ['Salvia esclarea', 'Resina verde', 'Incienso'],
+    base: ['Abeto balsámico', 'Cedro', 'Patchouli', 'Ládano'],
+    price: 2750000,
+    stock: 10,
+    image: 'https://us.viktor-rolf.com/dw/image/v2/AANG_PRD/on/demandware.static/-/Sites-vr-master-catalog/default/dw06340d3b/SB%20NV%20EDP%202024/01_vr_frag_spb_night_vision_edp_perfect_pdp_premium_packshot_90ml_1x1.jpg?q=70&sfrm=jpg&sh=900&sm=cut&sw=900'
+  },
+  {
+    slug: 'nectar-of-ecstasy-v2',
+    name: 'Nectar of Ecstasy (Versión 2)',
+    tagline: 'Cítricos dulces con firma de cedro y ámbar',
+    description: 'Versión amaderada y dulce de Nectar of Ecstasy, con fruta roja, bergamota y flores claras sobre cedro, ámbar y notas dulces.',
+    family: 'Amaderado',
+    gender: 'Femenino',
+    concentration: 'EDP',
+    top: ['Açai', 'Arándano', 'Bergamota'],
+    heart: ['Fresia', 'Muguet'],
+    base: ['Cedro', 'Ámbar', 'Notas dulces'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://www.french-avenue-parfum.com/wp-content/uploads/2025/01/Eau-de-parfum-Nectar-of-Ecstasy.jpg'
+  },
+  {
+    slug: 'odyssey-limoni',
+    name: 'Odyssey Limoni',
+    tagline: 'Limón dulce, naranja y té con frescura marina',
+    description: 'Cítrico fresco con limón, naranja dulce, mandarina y bergamota; corazón de flor de azahar, notas marinas y jengibre, y base de té, musk y ámbar.',
+    family: 'Cítrico',
+    gender: 'Unisex',
+    concentration: 'EDP',
+    top: ['Limón', 'Naranja dulce', 'Mandarina', 'Bergamota'],
+    heart: ['Azahar', 'Notas marinas', 'Jengibre'],
+    base: ['Té', 'Musk', 'Ámbar'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://fimgs.net/mdimg/perfume-thumbs/375x500.98695.jpg'
+  },
+  {
+    slug: 'odyssey-aqua-v2',
+    name: 'Odyssey Aqua (Versión 2)',
+    tagline: 'Menta fresca, lavanda y cítricos acuáticos',
+    description: 'Segunda lectura de Odyssey Aqua centrada en frescura y menta, con pomelo, naranja, artemisia, lavanda y un cierre de ambroxan, patchouli y ciprés.',
+    family: 'Fresco',
+    gender: 'Masculino',
+    concentration: 'EDP',
+    top: ['Pomelo', 'Naranja', 'Artemisia'],
+    heart: ['Menta', 'Lavanda'],
+    base: ['Ambroxan', 'Patchouli', 'Ciprés'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://armaf.com/cdn/shop/files/IMG_20250710_1558211-ezgif.com-webp-to-jpg-converter.jpg?v=1767894320&width=1200'
+  },
+  {
+    slug: 'paris-corner-taskeen-dia',
+    name: 'Paris Corner Taskeen Día',
+    tagline: 'Durazno, naranja sanguina y vainilla dulce',
+    description: 'Perfil frutal dulce de durazno, naranja sanguina y cardamomo, con corazón de heliotropo, davana, cognac y jazmín, y base de sándalo, vainilla, tonka y patchouli.',
+    family: 'Gourmand',
+    gender: 'Unisex',
+    concentration: 'EDP',
+    top: ['Durazno', 'Naranja sanguina', 'Cardamomo'],
+    heart: ['Heliotropo', 'Davana', 'Cognac', 'Jazmín'],
+    base: ['Sándalo', 'Benjuí', 'Cashmeran', 'Vainilla', 'Tonka', 'Ládano', 'Patchouli'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://www.pariscornerperfumes.com/cdn/shop/products/s-l1600_8555abe4-8c06-4e28-9072-d21df9f08a1e.jpg?v=1644237892&width=900'
+  },
+  {
+    slug: 'paris-corner-taskeen-noche',
+    name: 'Paris Corner Taskeen Noche',
+    tagline: 'Fruta dulce, cognac suave y fondo cremoso',
+    description: 'Perfil nocturno de Taskeen con durazno y naranja sanguina, un corazón floral con davana y cognac, y una base dulce de sándalo, benjuí, vainilla, tonka, ládano y patchouli.',
+    family: 'Gourmand',
+    gender: 'Unisex',
+    concentration: 'EDP',
+    top: ['Durazno', 'Naranja sanguina', 'Cardamomo'],
+    heart: ['Heliotropo', 'Davana', 'Cognac', 'Jazmín'],
+    base: ['Sándalo', 'Benjuí', 'Cashmeran', 'Vainilla', 'Tonka', 'Ládano', 'Patchouli'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://www.pariscornerperfumes.com/cdn/shop/products/s-l1600_8555abe4-8c06-4e28-9072-d21df9f08a1e.jpg?v=1644237892&width=900'
+  },
+  {
+    slug: 'paris-corner-khair-confection',
+    name: 'Paris Corner Khair Confection',
+    tagline: 'Pera, crema batida y vainilla malvavisco',
+    description: 'Gourmand dulce y frutal con pera y crema batida, corazón de jazmín, ylang-ylang y cashmeran, y fondo de sándalo, malvavisco y vainilla.',
+    family: 'Gourmand',
+    gender: 'Unisex',
+    concentration: 'EDP',
+    top: ['Pera', 'Crema batida'],
+    heart: ['Jazmín', 'Ylang-ylang', 'Cashmeran'],
+    base: ['Sándalo', 'Malvavisco', 'Vainilla'],
+    price: 2950000,
+    stock: 10,
+    image: 'https://www.pariscornerperfumes.com/cdn/shop/files/KHAIRCONFECTION01.jpg?v=1726730340&width=900'
+  }
+].map(makeProduct);
+
+function makeProduct(seed: DemoProductSeed, displayOrder: number): Product {
+  const id = seed.slug;
   return {
     id,
-    slug,
-    name,
-    tagline,
-    description: `${tagline}. Una composición de alta permanencia pensada para piel y clima urbano argentino.`,
-    scent_family: family,
-    gender_tag: 'Unisex',
-    concentration: 'EDP',
-    top_notes: ['Bergamota', 'Pimienta rosa', 'Azafrán'],
-    heart_notes: ['Rosa', 'Iris', 'Incienso'],
-    base_notes: ['Sándalo', 'Ámbar', 'Almizcle'],
+    slug: seed.slug,
+    name: seed.name,
+    tagline: seed.tagline,
+    description: seed.description,
+    scent_family: seed.family,
+    gender_tag: seed.gender,
+    concentration: seed.concentration,
+    top_notes: seed.top,
+    heart_notes: seed.heart,
+    base_notes: seed.base,
     featured: true,
     active: true,
-    display_order: 0,
+    display_order: displayOrder,
     variants: [
-      { id: `${slug}-50`, product_id: id, size_ml: 50, price_ars_cents: price, stock, sku: `${slug.toUpperCase()}-50`, active: true, weight_grams: 200 },
-      { id: `${slug}-100`, product_id: id, size_ml: 100, price_ars_cents: Math.round(price * 1.65), stock, sku: `${slug.toUpperCase()}-100`, active: true, weight_grams: 320 }
+      { id: `${seed.slug}-100`, product_id: id, size_ml: 100, price_ars_cents: seed.price, stock: seed.stock, sku: `${seed.slug.toUpperCase()}-100`, active: true, weight_grams: 320 }
     ],
     images: [
-      { id: `${slug}-1`, product_id: id, url: image, alt_text: name, is_primary: true, sort_order: 0 },
-      { id: `${slug}-2`, product_id: id, url: image.replace('w=900', 'w=901'), alt_text: `${name} detalle`, is_primary: false, sort_order: 1 }
+      { id: `${seed.slug}-1`, product_id: id, url: seed.image, alt_text: seed.name, is_primary: true, sort_order: 0 }
     ],
-    min_price_ars_cents: price,
-    total_stock: stock
+    min_price_ars_cents: seed.price,
+    total_stock: seed.stock
   };
 }
