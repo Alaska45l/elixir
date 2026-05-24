@@ -37,7 +37,7 @@
 
 <style>
   .contact { display: grid; grid-template-columns: 1fr 430px; gap: 64px; align-items: start; }
-  form { display: grid; gap: 18px; border: 1px solid var(--color-border); padding: 24px; background: var(--color-surface); }
+  form { display: grid; gap: 18px; border-radius: 14px; padding: 24px; background: var(--color-surface); box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
   .email { color: var(--color-text-muted); margin: 22px 0 42px; }
   @media (max-width: 900px) { .contact { grid-template-columns: 1fr; } }
 </style>

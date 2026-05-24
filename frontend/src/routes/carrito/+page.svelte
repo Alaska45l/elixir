@@ -153,15 +153,15 @@
   article img { width: 92px; height: 110px; object-fit: cover; }
   h2 { margin: 0; font-size: 1rem; }
   p { margin: 6px 0 0; color: var(--color-text-muted); }
-  article button { background: transparent; border: 0; color: var(--color-gold); }
-  .summary { display: grid; gap: 16px; border: 1px solid var(--color-border); padding: 22px; background: var(--color-surface); }
+  article button { background: transparent; border: 0; border-radius: 6px; color: var(--color-gold); }
+  .summary { display: grid; gap: 16px; border-radius: 14px; padding: 22px; background: var(--color-surface); box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
   .compact { gap: 12px; }
   .discount { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
   .shipping-options { display: grid; gap: 12px; }
   .shipping-head { display: flex; justify-content: space-between; align-items: center; color: var(--color-text-muted); }
   .option-list { display: grid; gap: 8px; }
-  .option-list label { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--color-border); padding: 12px; color: var(--color-text-muted); cursor: pointer; }
-  .option-list label.active { border-color: var(--color-gold); color: var(--color-text); }
+  .option-list label { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; border-radius: 6px; background: rgba(232,224,208,0.04); padding: 12px; color: var(--color-text-muted); cursor: pointer; }
+  .option-list label.active { background: rgba(184,151,94,0.12); color: var(--color-text); }
   .option-list small { display: block; margin-top: 4px; color: var(--color-text-muted); }
   .totals { display: grid; grid-template-columns: 1fr auto; gap: 10px; color: var(--color-text-muted); border-top: 1px solid var(--color-border); padding-top: 16px; }
   .totals strong { color: var(--color-gold); font-size: 1.35rem; }

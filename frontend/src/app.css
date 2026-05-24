@@ -52,7 +52,7 @@ a:hover { color: var(--color-gold); }
 .muted { color: var(--color-text-muted); }
 .gold { color: var(--color-gold); }
 .hairline { border-top: 1px solid var(--color-border); }
-.btn { min-height: 46px; padding: 0 18px; border: 1px solid var(--color-gold); color: var(--color-text); background: transparent; display: inline-flex; align-items: center; justify-content: center; gap: 10px; position: relative; overflow: hidden; }
+.btn { min-height: 46px; padding: 0 18px; border: 1px solid var(--color-gold); border-radius: 6px; color: var(--color-text); background: transparent; display: inline-flex; align-items: center; justify-content: center; gap: 10px; position: relative; overflow: hidden; }
 .btn::before {
   content: '';
   position: absolute;
@@ -69,7 +69,7 @@ a:hover { color: var(--color-gold); }
 .btn.text:hover { color: var(--color-text); }
 .field { display: grid; gap: 8px; }
 .field span { color: var(--color-text-muted); font-size: .85rem; }
-.input, .select, .textarea { width: 100%; background: rgba(232,224,208,.04); color: var(--color-text); border: 1px solid var(--color-border); padding: 13px 14px; border-radius: 0; }
+.input, .select, .textarea { width: 100%; background: rgba(232,224,208,.04); color: var(--color-text); border: 1px solid var(--color-border); padding: 13px 14px; border-radius: 6px; }
 .input:focus, .select:focus, .textarea:focus { border-color: var(--color-gold); outline: none; background: rgba(232,224,208,.07); }
 .textarea { min-height: 130px; resize: vertical; }
 p:not([class]) { max-width: 72ch; line-height: 1.78; }

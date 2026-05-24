@@ -55,7 +55,7 @@
   img { width: 78px; height: 96px; object-fit: cover; }
   article span { display: block; color: var(--color-text-muted); margin-top: 4px; }
   .qty { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
-  .qty button { background: transparent; color: var(--color-gold); border: 1px solid var(--color-border); min-width: 72px; height: 46px; }
+  .qty button { background: rgba(232,224,208,0.04); color: var(--color-gold); border: 0; border-radius: 6px; min-width: 72px; height: 46px; }
   .item-total { display: block; margin-top: 8px; color: var(--color-gold); font-size: .9rem; }
   .summary { border-top: 1px solid var(--color-border); padding-top: 16px; display: flex; justify-content: space-between; }
   .empty { display: grid; gap: 16px; align-content: center; min-height: 220px; }

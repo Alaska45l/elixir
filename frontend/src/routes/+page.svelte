@@ -6,8 +6,8 @@
 </script>
 
 <svelte:head>
-  <title>ELIXIR Exclusive | Perfumería argentina</title>
-  <meta name="description" content="Perfumes argentinos de lujo con envíos a todo el país y checkout en ARS." />
+  <title>ELIXIR Exclusive | Lorem ipsum</title>
+  <meta name="description" content="Lorem ipsum dolor sit amet, consectetur adipiscing elit." />
   <meta property="og:title" content="ELIXIR Exclusive" />
   <meta property="og:description" content={data.homepage.hero_subheading} />
   <meta property="og:image" content={data.homepage.hero_image_url} />
@@ -48,13 +48,28 @@
 <section class="shipping-strip hairline">
   <div class="container" use:reveal>
     <span>◇</span>
-    <div><h2>Envíos a todo el país</h2><p>Preparación cuidada, seguimiento y despacho desde Buenos Aires.</p></div>
+    <div><h2>Lorem ipsum</h2><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p></div>
   </div>
 </section>
 
-<section class="container collections">
-  <a href="/fragrances?family=Oriental"><img src="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=900&q=85" alt="Colección oriental" /><span>Orientales intensos</span></a>
-  <a href="/fragrances?family=Fresco"><img src="https://images.unsplash.com/photo-1600612253971-422e7f7faeb6?auto=format&fit=crop&w=900&q=85" alt="Colección fresca" /><span>Frescos de día</span></a>
+<section class="container collections-section" use:reveal>
+  <p class="eyebrow">Colecciones</p>
+  <div class="gold-rule"></div>
+  <h2 class="display collections-title">Lorem ipsum dolor</h2>
+  <div class="collections-grid">
+    <a class="collection-card hero-card" href="/fragrances?family=Oriental">
+      <img src="https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=900&q=85" alt="Lorem ipsum" />
+      <span class="collection-copy"><strong>Lorem ipsum</strong><em>Explorar →</em></span>
+    </a>
+    <a class="collection-card" href="/fragrances?family=Amaderado">
+      <img src="https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=85" alt="Dolor sit amet" />
+      <span class="collection-copy"><strong>Dolor sit amet</strong><em>Explorar →</em></span>
+    </a>
+    <a class="collection-card" href="/fragrances?family=Gourmand">
+      <img src="https://images.unsplash.com/photo-1586495777744-4413f21062fa?auto=format&fit=crop&w=900&q=85" alt="Consectetur adipiscing" />
+      <span class="collection-copy"><strong>Consectetur adipiscing</strong><em>Explorar →</em></span>
+    </a>
+  </div>
 </section>
 
 <style>
@@ -104,27 +119,91 @@
   }
   .rule { width: 64px; height: 1px; background: var(--color-gold); margin: 0 0 28px; }
   .actions { display: flex; gap: 16px; align-items: center; }
-  .editorial { display: grid; grid-template-columns: .9fr 1.1fr; gap: 56px; align-items: center; padding: 56px 0; }
-  .editorial .copy { border-left: 1px solid var(--color-gold); padding-left: 32px; }
+  .actions .btn.text { padding: 0 14px; }
+  .editorial {
+    display: grid;
+    grid-template-columns: .9fr 1.1fr;
+    gap: 56px;
+    align-items: center;
+    border-radius: 16px;
+    background: var(--color-surface);
+    padding: 48px;
+    overflow: hidden;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.2);
+  }
+  .editorial .copy { padding-left: 0; }
   .editorial p:last-child { color: var(--color-text-muted); font-size: 1.2rem; line-height: 1.8; }
-  .editorial img { width: 100%; aspect-ratio: 5 / 4; object-fit: cover; }
+  .editorial img { width: calc(100% + 48px); aspect-ratio: 5 / 4; object-fit: cover; margin: -48px -48px -48px 0; }
   .shipping-strip { margin: 80px 0; padding: 30px 0; }
   .shipping-strip .container { display: flex; gap: 18px; align-items: center; }
   .shipping-strip span { color: var(--color-gold); font-size: .7rem; opacity: .7; transform: rotate(45deg); display: inline-block; width: 8px; height: 8px; border: 1px solid var(--color-gold); flex-shrink: 0; text-indent: -999px; overflow: hidden; }
   .shipping-strip h2 { margin: 0; font-size: 1.3rem; }
   .shipping-strip p { margin: 4px 0 0; color: var(--color-text-muted); }
-  .collections { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
-  .collections a { position: relative; overflow: hidden; min-height: 360px; }
-  .collections img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
-  .collections a:hover img { transform: scale(1.04); }
-  .collections span { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 24px 22px; background: linear-gradient(to top, color-mix(in srgb, var(--color-bg) 82%, transparent) 0%, transparent 100%); color: var(--color-text); font-family: var(--font-display); font-size: 2.2rem; font-weight: 500; letter-spacing: 0; }
+  .collections-section { padding-bottom: 28px; }
+  .collections-title { margin: 0 0 28px; font-size: clamp(2.2rem, 5vw, 4.4rem); line-height: .96; }
+  .collections-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 16px;
+  }
+  .collection-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 260px;
+    border-radius: 16px;
+  }
+  .collection-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(13,31,21,0.85) 0%, rgba(13,31,21,0.1) 60%, transparent 100%);
+    transition: background .3s ease;
+    pointer-events: none;
+  }
+  .hero-card { grid-row: 1 / 3; min-height: 536px; }
+  .collection-card img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+  .collection-card:hover img { transform: scale(1.06); }
+  .collection-card:hover::after { background: linear-gradient(to top, rgba(13,31,21,0.92) 0%, rgba(13,31,21,0.18) 62%, transparent 100%); }
+  .collection-copy {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    padding: 34px 28px 26px;
+    color: var(--color-text);
+  }
+  .collection-copy strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 3vw, 2.8rem);
+    line-height: .98;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+  .collection-copy em {
+    display: inline-flex;
+    margin-top: 12px;
+    color: var(--color-gold);
+    font-style: normal;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    border-bottom: 1px solid transparent;
+  }
+  .collection-card:hover .collection-copy em { border-bottom-color: var(--color-gold); }
   @media (max-width: 600px) {
     .hero { min-height: 560px; height: 80svh; }
     h1 { font-size: clamp(2.8rem, 12vw, 5rem); }
     .actions { flex-direction: column; align-items: flex-start; }
   }
   @media (max-width: 860px) {
-    .editorial, .collections { grid-template-columns: 1fr; }
+    .editorial { grid-template-columns: 1fr; }
+    .collections-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .collection-card, .hero-card { grid-row: auto; min-height: 280px; }
+    .editorial { padding: 32px; }
+    .editorial img { margin: 0 -48px -48px; width: calc(100% + 96px); }
   }
 
   @media (prefers-reduced-motion: no-preference) {

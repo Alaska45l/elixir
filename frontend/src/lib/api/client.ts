@@ -210,13 +210,13 @@ export async function quoteShipping(req: ShippingQuoteRequest): Promise<Shipping
 }
 
 export const defaultHomepage: HomepageSettings = {
-  hero_heading: 'Perfumería argentina de gesto privado',
-  hero_subheading: 'Fragancias intensas, precisas y comerciales, curadas para noches largas, hoteles silenciosos y piel con presencia.',
+  hero_heading: 'Lorem ipsum dolor sit amet',
+  hero_subheading: 'Consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
   hero_image_url: 'https://images.unsplash.com/photo-1619994403073-2cec844b8e63?auto=format&fit=crop&w=1200&q=85',
   hero_cta_label: 'Catálogo',
   hero_cta_url: '/fragrances',
-  editorial_heading: 'Una firma de baja voz',
-  editorial_body: 'ELIXIR Exclusive trabaja familias olfativas densas y modernas: maderas limpias, ámbar seco, flores oscuras y cítricos fríos. Cada compra se prepara con empaque sobrio y seguimiento personalizado.',
+  editorial_heading: 'Lorem ipsum',
+  editorial_body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
   editorial_image_url: 'https://images.unsplash.com/photo-1595425970377-c9703cf48b6f?auto=format&fit=crop&w=1000&q=85'
 };
 
@@ -224,20 +224,21 @@ export const defaultSettings: SiteSettings = {
   footer_instagram_url: 'https://www.instagram.com/',
   footer_tiktok_url: 'https://www.tiktok.com/',
   footer_whatsapp_url: '',
-  announcement_bar_text: 'Envíos a todo el país · Empaque discreto · Seguimiento personalizado',
+  announcement_bar_text: 'Lorem ipsum dolor sit amet · Consectetur adipiscing elit · Sed do eiusmod tempor',
   announcement_bar_active: true,
   about_title: 'ELIXIR Exclusive',
-  about_description: 'Perfumería argentina de lujo discreto. Fragancias intensas, envíos nacionales y atención privada.',
+  about_description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
   about_location: 'Buenos Aires, Argentina',
   about_phone: '',
   faq_items: [
-    { question: '¿Los perfumes son originales?', answer: 'Sí. ELIXIR Exclusive comercializa fragancias seleccionadas y documentadas.' },
-    { question: '¿Qué medios de pago aceptan?', answer: 'El checkout opera en ARS mediante MercadoPago.' },
-    { question: '¿Hacen envíos?', answer: 'Sí, a CABA, GBA e Interior con seguimiento.' },
-    { question: '¿Puedo consultar por WhatsApp?', answer: 'Sí. Recomendamos WhatsApp para asesoramiento rápido.' }
+    { question: '¿Los perfumes son originales?', answer: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
+    { question: '¿Qué medios de pago aceptan?', answer: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
+    { question: '¿Hacen envíos?', answer: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
+    { question: '¿Puedo consultar por WhatsApp?', answer: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' }
   ],
-  return_policy_html: '<p>Los cambios se revisan caso por caso con el producto cerrado, sin uso y dentro de los plazos informados por atención al cliente.</p>',
+  return_policy_html: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>',
   navbar_product_categories: [
+    { label: 'Fragancias Unisex', href: '/fragrances?gender=Unisex' },
     { label: 'Fragancias Masculinas', href: '/fragrances?gender=Masculino' },
     { label: 'Fragancias Femeninas', href: '/fragrances?gender=Femenino' },
     { label: 'Línea Oriental', href: '/fragrances?family=Oriental' },
@@ -247,12 +248,12 @@ export const defaultSettings: SiteSettings = {
 };
 
 export const demoProducts: Product[] = [
-  makeProduct('nocturno-oud', 'Nocturno Oud', 'Oud seco, rosa negra y cuero limpio', 'Amaderado', 8900000, 4, 'https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('ambar-de-recoleta', 'Ámbar de Recoleta', 'Ámbar cálido, vainilla sobria y incienso', 'Oriental', 7600000, 12, 'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('flor-de-noche', 'Flor de Noche', 'Jazmín oscuro, iris y almizcle limpio', 'Floral', 8200000, 3, 'https://images.unsplash.com/photo-1616604426203-b9baf4ac29d2?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('citrino-frio', 'Citrino Frío', 'Bergamota helada, neroli y cedro blanco', 'Cítrico', 6900000, 8, 'https://images.unsplash.com/photo-1609541657971-7a22e8e76219?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('gourmand-reserva', 'Gourmand Reserva', 'Tonka, cacao amargo y sándalo', 'Gourmand', 9300000, 2, 'https://images.unsplash.com/photo-1590736969955-71cc94901144?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('fresco-sur', 'Fresco Sur', 'Mate verde, pomelo y vetiver', 'Fresco', 7100000, 0, 'https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=900&q=90')
+  makeProduct('nocturno-oud', 'Nocturno Oud', 'Lorem ipsum dolor sit amet', 'Amaderado', 8900000, 4, 'https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=900&q=90'),
+  makeProduct('ambar-de-recoleta', 'Ámbar de Recoleta', 'Consectetur adipiscing elit', 'Oriental', 7600000, 12, 'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?auto=format&fit=crop&w=900&q=90'),
+  makeProduct('flor-de-noche', 'Flor de Noche', 'Sed do eiusmod tempor', 'Floral', 8200000, 3, 'https://images.unsplash.com/photo-1616604426203-b9baf4ac29d2?auto=format&fit=crop&w=900&q=90'),
+  makeProduct('citrino-frio', 'Citrino Frío', 'Incididunt ut labore', 'Cítrico', 6900000, 8, 'https://images.unsplash.com/photo-1609541657971-7a22e8e76219?auto=format&fit=crop&w=900&q=90'),
+  makeProduct('gourmand-reserva', 'Gourmand Reserva', 'Et dolore magna aliqua', 'Gourmand', 9300000, 2, 'https://images.unsplash.com/photo-1590736969955-71cc94901144?auto=format&fit=crop&w=900&q=90'),
+  makeProduct('fresco-sur', 'Fresco Sur', 'Ut enim ad minim veniam', 'Fresco', 7100000, 0, 'https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=900&q=90')
 ];
 
 function makeProduct(slug: string, name: string, tagline: string, family: string, price: number, stock: number, image: string): Product {

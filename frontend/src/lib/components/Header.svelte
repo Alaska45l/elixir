@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import MobileNav from '$lib/components/MobileNav.svelte';
-  import type { SiteSettings } from '$lib/api/client';
+  import type { NavItem, SiteSettings } from '$lib/api/client';
   import { cartCount } from '$lib/stores/cart';
   import { wishlist } from '$lib/stores/wishlist';
   import { onMount } from 'svelte';
@@ -15,6 +15,7 @@
     { label: 'Envíos', href: '/envios' },
     { label: 'Contacta con nosotros', href: '/contacto' }
   ];
+  const unisexNavItem = { label: 'Fragancias Unisex', href: '/fragrances?gender=Unisex' };
 
   let scrolled = false;
   let mobileNavOpen = false;
@@ -22,10 +23,16 @@
   let closeTimer: ReturnType<typeof setTimeout> | undefined;
 
   $: activePath = $page.url.pathname;
+  $: productLinks = includeUnisexLink(settings.navbar_product_categories);
   $: panelTitle = activePanel === 'productos' ? 'Productos' : 'Contacto';
-  $: panelLinks = activePanel === 'productos' ? settings.navbar_product_categories : activePanel === 'contacto' ? contactLinks : [];
+  $: panelLinks = activePanel === 'productos' ? productLinks : activePanel === 'contacto' ? contactLinks : [];
   $: instagramHref = settings.footer_instagram_url || 'https://www.instagram.com/';
   $: tiktokHref = settings.footer_tiktok_url || 'https://www.tiktok.com/';
+
+  function includeUnisexLink(items: NavItem[]): NavItem[] {
+    if (items.some((item) => item.href === unisexNavItem.href)) return items;
+    return [unisexNavItem, ...items];
+  }
 
   function isActive(href: string): boolean {
     const path = href.split('?')[0];
@@ -59,7 +66,10 @@
     </svg>
   </button>
 
-  <a class="brand display" href="/">ELIXIR</a>
+  <a class="brand display" href="/">
+    <img src="/elixir-logo.webp" alt="ELIXIR Exclusive" />
+    <span>ELIXIR</span>
+  </a>
   <nav class="desktop-nav" aria-label="Navegación principal">
     <div class="menu-group" role="none" on:mouseenter={() => openPanel('productos')} on:mouseleave={scheduleClose} on:focusin={() => openPanel('productos')}>
       <a class:active={isActive('/fragrances')} href="/fragrances" aria-haspopup="true" aria-expanded={activePanel === 'productos'}>Productos</a>
@@ -117,15 +127,23 @@
   </div>
 </header>
 
-<MobileNav id="mobile-nav" open={mobileNavOpen} {settings} contactLinks={contactLinks} onClose={() => mobileNavOpen = false} />
+<MobileNav id="mobile-nav" open={mobileNavOpen} {settings} productLinks={productLinks} contactLinks={contactLinks} onClose={() => mobileNavOpen = false} />
 
 <style>
   .menu-backdrop { position: fixed; inset: 0; z-index: 18; border: 0; padding: 0; background: color-mix(in srgb, var(--color-bg) 22%, transparent); opacity: 0; visibility: hidden; pointer-events: none; backdrop-filter: blur(0); transition: opacity .24s ease, visibility 0s linear .24s, backdrop-filter .24s ease; }
   .menu-backdrop.open { opacity: 1; visibility: visible; pointer-events: auto; backdrop-filter: blur(14px); transition-delay: 0s; }
   .site-header { position: sticky; top: 0; z-index: 32; height: 72px; padding: 0 max(20px, 5vw); display: flex; align-items: center; justify-content: space-between; background: color-mix(in srgb, var(--color-bg) 0%, transparent); border-bottom: 1px solid transparent; transition: background .3s ease, border-color .3s ease, backdrop-filter .3s ease, box-shadow .3s ease; }
   .site-header.scrolled, .site-header.menu-open { background: color-mix(in srgb, var(--color-bg) 92%, transparent); border-bottom-color: var(--color-border); backdrop-filter: blur(16px); box-shadow: 0 1px 0 var(--color-border), 0 8px 24px color-mix(in srgb, var(--color-bg) 40%, transparent); }
-  .brand { color: var(--color-text); font-size: 1.55rem; }
-  .desktop-nav { display: flex; gap: 26px; align-items: center; color: var(--color-text-muted); font-size: .92rem; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--color-text); font-size: 1.55rem; }
+  .brand img {
+    height: 42px;
+    width: 42px;
+    object-fit: cover;
+    object-position: center 25%;
+    border-radius: 4px;
+    margin-bottom: 8%;
+  }
+  .desktop-nav { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 26px; align-items: center; color: var(--color-text-muted); font-size: .92rem; }
   .desktop-nav a, .desktop-nav button { position: relative; background: transparent; border: 0; padding: 0; color: inherit; }
   .desktop-nav a::after, .desktop-nav button::after { content: ''; position: absolute; left: 0; bottom: -4px; width: 0; height: 1px; background: var(--color-gold); transition: width 0.25s ease; }
   .desktop-nav a.active { color: var(--color-gold); }
@@ -155,5 +173,6 @@
     .desktop-nav { display: none; }
     .hamburger { display: flex; }
     .brand { font-size: 1.25rem; }
+    .brand img { height: 32px; width: 32px; }
   }
 </style>
