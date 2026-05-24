@@ -153,28 +153,30 @@
   .editorial {
     display: grid;
     grid-template-columns: .9fr 1.1fr;
-    gap: 0;
-    align-items: stretch;
+    gap: 48px;
+    align-items: center;
     border-radius: 16px;
     background: var(--color-surface);
     padding: 48px;
-    padding-right: 0;
     overflow: hidden;
     box-shadow: 0 4px 32px rgba(0,0,0,0.2);
   }
   .editorial .copy {
     padding-left: 0;
-    padding-right: 48px;
+    padding-right: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
   }
   .editorial p:last-child { color: var(--color-text-muted); font-size: 1.2rem; line-height: 1.8; }
   .editorial img {
+    display: block;
     width: 100%;
-    height: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 5 / 4;
     object-fit: cover;
-    border-radius: 0 16px 16px 0;
+    border-radius: 12px;
   }
   .collections-section {
     margin-top: clamp(64px, 8vw, 104px);
@@ -285,7 +287,7 @@
     .editorial {
       grid-template-columns: 1fr;
       padding: 32px;
-      padding-bottom: 0;
+      gap: 0;
     }
     .editorial .copy {
       padding-right: 0;
@@ -295,7 +297,7 @@
       width: 100%;
       height: auto;
       aspect-ratio: 16 / 9;
-      border-radius: 0 0 16px 16px;
+      border-radius: 12px;
     }
     .collections-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
     .collection-card, .hero-card { grid-row: auto; min-height: 280px; }
