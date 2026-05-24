@@ -58,11 +58,11 @@
   <h2 class="display collections-title">Lorem ipsum dolor</h2>
   <div class="collections-grid">
     <a class="collection-card hero-card" href="/fragrances?family=Oriental">
-      <img src="https://images.unsplash.com/photo-1624811742200-69166e7b7bcc?auto=format&fit=crop&w=900&q=85" alt="Lorem ipsum" />
+      <img src="https://images.unsplash.com/photo-1563170351-be82bc888aa4?auto=format&fit=crop&w=900&q=85" alt="Lorem ipsum" />
       <span class="collection-copy"><strong>Lorem ipsum</strong><em>Explorar →</em></span>
     </a>
     <a class="collection-card" href="/fragrances?family=Amaderado">
-      <img src="https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=85" alt="Dolor sit amet" />
+      <img src="https://images.unsplash.com/photo-1624811742200-69166e7b7bcc?auto=format&fit=crop&w=900&q=85" alt="Dolor sit amet" />
       <span class="collection-copy"><strong>Dolor sit amet</strong><em>Explorar →</em></span>
     </a>
     <a class="collection-card" href="/fragrances?family=Gourmand">
