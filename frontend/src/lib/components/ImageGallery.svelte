@@ -18,9 +18,9 @@
   .main { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: center; border-radius: 14px; background: color-mix(in srgb, var(--color-bg) 82%, var(--color-surface)); }
   .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
   button { width: 68px; height: 68px; border: 1px solid transparent; border-radius: 6px; background: var(--color-surface); padding: 0; transition: border-color .2s ease, opacity .2s ease; overflow: hidden; position: relative; }
-  button::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--color-gold) 0%, transparent); transition: background .2s ease; }
-  button:hover::after { background: color-mix(in srgb, var(--color-gold) 8%, transparent); }
-  button.active { border-color: var(--color-gold); }
-  button.active::after { background: color-mix(in srgb, var(--color-gold) 6%, transparent); }
+  button::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--color-emerald) 0%, transparent); transition: background .2s ease; }
+  button:hover::after { background: color-mix(in srgb, var(--color-emerald) 8%, transparent); }
+  button.active { border-color: var(--color-emerald); }
+  button.active::after { background: color-mix(in srgb, var(--color-emerald) 6%, transparent); }
   button img { width: 100%; height: 100%; object-fit: cover; display: block; }
 </style>

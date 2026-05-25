@@ -203,7 +203,7 @@
     font-weight: 500;
     line-height: 1.3;
   }
-  .line-name:hover h2 { color: var(--color-gold); }
+  .line-name:hover h2 { color: var(--color-emerald-dark); }
   .line-variant {
     margin: 0;
     color: var(--color-text-muted);
@@ -251,11 +251,11 @@
   .shipping-options { display: grid; gap: 12px; }
   .shipping-head { display: flex; justify-content: space-between; align-items: center; color: var(--color-text-muted); }
   .option-list { display: grid; gap: 8px; }
-  .option-list label { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; border-radius: 6px; background: rgba(232,224,208,0.04); padding: 12px; color: var(--color-text-muted); cursor: pointer; }
-  .option-list label.active { background: rgba(184,151,94,0.12); color: var(--color-text); }
+  .option-list label { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; border-radius: 6px; background: rgba(45,42,36,0.04); padding: 12px; color: var(--color-text-muted); cursor: pointer; }
+  .option-list label.active { background: rgba(107,191,138,0.12); color: var(--color-text); }
   .option-list small { display: block; margin-top: 4px; color: var(--color-text-muted); }
   .totals { display: grid; grid-template-columns: 1fr auto; gap: 10px; color: var(--color-text-muted); border-top: 1px solid var(--color-border); padding-top: 16px; }
-  .totals strong { color: var(--color-gold); font-size: 1.35rem; }
+  .totals strong { color: var(--color-gold-dark); font-size: 1.35rem; }
   .empty { min-height: 50vh; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
   .empty h2 { font-size: clamp(2.8rem, 6vw, 5rem); margin: 0; }
   @media (max-width: 920px) {

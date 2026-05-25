@@ -38,7 +38,7 @@
 
 <style>
   .confirmation { max-width: 760px; text-align: center; display: grid; justify-items: center; gap: 20px; }
-  .icon { width: 72px; height: 72px; border: 1px solid var(--color-gold); color: var(--color-gold); display: grid; place-items: center; font-size: 2rem; }
+  .icon { width: 72px; height: 72px; border: 1px solid var(--color-emerald); color: var(--color-emerald); display: grid; place-items: center; font-size: 2rem; }
   .icon.error { border-color: #b66; color: #e0a39a; }
   h1 { font-size: clamp(3rem, 7vw, 6rem); line-height: .92; margin: 0; }
   p { color: var(--color-text-muted); line-height: 1.7; }

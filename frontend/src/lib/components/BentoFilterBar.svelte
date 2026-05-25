@@ -146,9 +146,9 @@
   }
 
   .chip.active {
-    background: var(--color-gold);
-    color: var(--color-bg);
-    border-color: var(--color-gold);
+    background: var(--color-emerald);
+    color: #FDF8F0;
+    border-color: var(--color-emerald);
   }
 
   .chip input {
@@ -166,7 +166,7 @@
 
   .price-row input[type="range"] {
     width: 80px;
-    accent-color: var(--color-gold);
+    accent-color: var(--color-emerald);
   }
 
   .price-label {

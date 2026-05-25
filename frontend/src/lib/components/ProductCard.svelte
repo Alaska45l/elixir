@@ -46,7 +46,7 @@
   }
 
   .product.variant-limited {
-    box-shadow: 0 0 20px rgba(184,151,94,0.15);
+    box-shadow: 0 0 20px rgba(107,191,138,0.15);
   }
 
   .card-link {
@@ -90,9 +90,9 @@
     z-index: 2;
     background: linear-gradient(
       to top,
-      rgba(13,31,21,0.88) 0%,
-      rgba(13,31,21,0.4) 40%,
-      rgba(13,31,21,0.05) 70%,
+      rgba(25,23,20,0.88) 0%,
+      rgba(25,23,20,0.50) 35%,
+      rgba(25,23,20,0.12) 65%,
       transparent 100%
     );
     padding: 18px;
@@ -109,9 +109,10 @@
     font-size: 0.65rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--color-gold);
-    background: rgba(13,31,21,0.7);
+    color: var(--color-on-image);
+    background: rgba(25,23,20,0.65);
     border-radius: 4px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
   }
 
   .badge.empty {
@@ -126,44 +127,45 @@
     max-width: min(100%, 34ch);
     padding: 15px;
     border-radius: 6px;
-    background: #0D1F158C;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
   }
 
   h3 {
     margin: 0;
     font-size: clamp(1.2rem, 2.5vw, 1.7rem);
     line-height: 1.05;
-    color: var(--color-text);
+    color: var(--color-on-image);
     letter-spacing: 0;
     transition: color 0.2s ease;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.5);
   }
 
   .product:hover h3 {
-    color: var(--color-gold);
+    color: var(--color-emerald);
   }
 
   .tagline {
     margin: 0;
-    color: color-mix(in srgb, var(--color-text) 76%, var(--color-text-muted));
+    color: rgba(255,253,248,0.72);
     font-size: 0.78rem;
     line-height: 1.4;
     max-width: 28ch;
   }
 
   .price {
-    color: color-mix(in srgb, var(--color-text) 70%, var(--color-text-muted));
+    color: rgba(255,253,248,0.78);
     font-size: 0.82rem;
   }
 
   .card-detail {
-    color: var(--color-gold);
+    color: var(--color-emerald);
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-top: 4px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.35);
   }
 
   .card-cta {
@@ -172,6 +174,13 @@
     min-height: 38px;
     padding: 0 16px;
     font-size: 0.8rem;
+    color: var(--color-on-image);
+    border-color: rgba(255,253,248,0.4);
+  }
+
+  .card-cta:hover {
+    border-color: var(--color-on-image);
+    color: var(--color-on-image);
   }
 
   .product :global(.wishlist-btn) {
@@ -186,7 +195,7 @@
   }
 
   .card-link:hover {
-    color: var(--color-text);
+    color: var(--color-on-image);
   }
 
   @media (max-width: 860px) {

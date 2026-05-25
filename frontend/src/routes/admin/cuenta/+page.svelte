@@ -144,6 +144,6 @@
   article { display: grid; grid-template-columns: 1fr minmax(180px, 260px) auto auto; gap: 12px; align-items: end; border: 1px solid var(--color-border); background: var(--color-surface); padding: 14px; }
   article div { display: grid; gap: 5px; }
   article span { color: var(--color-text-muted); font-size: .86rem; }
-  .danger { border-color: #9f5d55; color: #e0a39a; }
+  .danger { border-color: var(--color-danger-soft); color: var(--color-danger-soft); }
   @media (max-width: 900px) { .new-user, article { grid-template-columns: 1fr; } }
 </style>

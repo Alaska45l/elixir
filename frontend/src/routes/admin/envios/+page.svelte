@@ -156,7 +156,7 @@
   article.inactive { opacity: .65; }
   article div { display: grid; gap: 5px; }
   article span { color: var(--color-text-muted); }
-  .ok { color: var(--color-gold); }
-  .danger { border-color: #9f5d55; color: #e0a39a; }
+  .ok { color: var(--color-emerald-dark); }
+  .danger { border-color: var(--color-danger-soft); color: var(--color-danger-soft); }
   @media (max-width: 980px) { .layout, article { grid-template-columns: 1fr; } }
 </style>

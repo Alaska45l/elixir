@@ -200,6 +200,6 @@
   .image-row img { width: 72px; height: 72px; object-fit: cover; }
   .actions { display: flex; gap: 12px; }
   .error { color: var(--color-danger-soft); margin: 0; align-self: center; }
-  .danger { border-color: #9f5d55; color: #e0a39a; }
+  .danger { border-color: var(--color-danger-soft); color: var(--color-danger-soft); }
   @media (max-width: 800px) { .variant-row, .image-row { grid-template-columns: 1fr; } }
 </style>

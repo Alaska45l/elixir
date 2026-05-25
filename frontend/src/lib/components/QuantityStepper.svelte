@@ -46,7 +46,7 @@
     display: flex;
     height: 46px;
     width: 120px;
-    background: rgba(232,224,208,0.04);
+    background: rgba(45,42,36,0.04);
     border-radius: 6px;
     overflow: hidden;
   }
@@ -64,7 +64,7 @@
   }
 
   .step-btn:hover:not(:disabled) {
-    color: var(--color-gold);
+    color: var(--color-emerald-dark);
     background: var(--color-surface-hover);
   }
 
@@ -77,7 +77,7 @@
     flex: 1;
     display: grid;
     place-items: center;
-    background: rgba(13,31,21,0.42);
+    background: rgba(45,42,36,0.06);
     overflow: hidden;
     position: relative;
   }

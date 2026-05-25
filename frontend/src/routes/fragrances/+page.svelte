@@ -89,10 +89,10 @@
     box-shadow: 0 4px 24px rgba(0,0,0,0.15);
   }
   .filter-summary span { color: var(--color-text); font-weight: 700; }
-  .filter-summary strong { color: var(--color-gold); font-size: .86rem; font-weight: 700; }
+  .filter-summary strong { color: var(--color-emerald-dark); font-size: .86rem; font-weight: 700; }
   .catalog { display: grid; gap: 44px; align-items: start; }
   .pagination { display: flex; gap: 10px; margin-top: 44px; flex-wrap: wrap; }
-  .pagination .active { border-color: var(--color-gold); color: var(--color-gold); }
+  .pagination .active { border-color: var(--color-emerald); color: var(--color-emerald-dark); }
   @media (max-width: 860px) {
     .catalog-filters { position: sticky; top: 84px; z-index: 16; margin-bottom: 18px; }
     .pagination .btn { min-width: 48px; }

@@ -15,8 +15,8 @@
 
 <style>
   .sizes { display: flex; flex-wrap: wrap; gap: 10px; }
-  button { min-width: 98px; height: 44px; border: 0; border-radius: 6px; background: rgba(232,224,208,0.04); color: var(--color-text-muted); font-size: .85rem; letter-spacing: .04em; transition: background .2s ease, color .2s ease; }
-  button:hover:not(:disabled):not(.active) { background: rgba(232,224,208,0.07); color: var(--color-text); }
-  button.active { background: var(--color-gold); color: var(--color-bg); font-weight: 600; }
+  button { min-width: 98px; height: 44px; border: 0; border-radius: 6px; background: rgba(45,42,36,0.04); color: var(--color-text-muted); font-size: .85rem; letter-spacing: .04em; transition: background .2s ease, color .2s ease; }
+  button:hover:not(:disabled):not(.active) { background: rgba(45,42,36,0.07); color: var(--color-text); }
+  button.active { background: var(--color-emerald); color: #FDF8F0; font-weight: 600; }
   button:disabled { opacity: .35; cursor: not-allowed; }
 </style>

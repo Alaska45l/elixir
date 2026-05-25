@@ -51,7 +51,7 @@
 </footer>
 
 <style>
-  .footer { padding: 54px 0 38px; margin-top: 80px; border-top: 1px solid rgba(184,151,94,.22); }
+  .footer { padding: 54px 0 38px; margin-top: 80px; border-top: 1px solid rgba(61,139,94,.18); }
   .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 42px; }
   .footer-brand {
     display: grid;
@@ -74,9 +74,9 @@
     line-height: 1;
   }
   nav { display: grid; align-content: start; gap: 10px; color: var(--color-text-muted); }
-  h3 { color: var(--color-gold); margin: 0 0 8px; font-size: .75rem; text-transform: uppercase; letter-spacing: .14em; }
+  h3 { color: var(--color-emerald-dark); margin: 0 0 8px; font-size: .75rem; text-transform: uppercase; letter-spacing: .14em; }
   span { font-size: .85rem; margin-top: 8px; }
   .social-link { display: flex; gap: 8px; align-items: center; }
-  .social-link svg { color: var(--color-gold); flex: 0 0 auto; }
+  .social-link svg { color: var(--color-emerald); flex: 0 0 auto; }
   @media (max-width: 860px) { .footer-grid { grid-template-columns: 1fr; } }
 </style>

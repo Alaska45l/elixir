@@ -168,7 +168,7 @@
 
   .group-trigger::after {
     content: '+';
-    color: var(--color-gold);
+    color: var(--color-emerald);
     font-family: var(--font-ui);
     font-size: 1.35rem;
   }
@@ -233,7 +233,7 @@
   .social-label {
     min-height: 0;
     padding: 20px 0 4px;
-    color: var(--color-gold);
+    color: var(--color-emerald-dark);
     font-size: .76rem;
     font-weight: 700;
     letter-spacing: .16em;
@@ -246,12 +246,12 @@
   }
 
   .social-link svg {
-    color: var(--color-gold);
+    color: var(--color-emerald);
     flex: 0 0 auto;
   }
 
   .children a:hover,
   .solo:hover {
-    color: var(--color-gold);
+    color: var(--color-emerald-dark);
   }
 </style>

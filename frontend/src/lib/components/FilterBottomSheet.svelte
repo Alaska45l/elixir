@@ -219,7 +219,7 @@
 
   .filter-box {
     border-radius: 14px;
-    background: rgba(13,31,21,0.42);
+    background: rgba(45,42,36,0.04);
     padding: 16px;
     display: grid;
     gap: 12px;
@@ -264,9 +264,9 @@
 
   .chip:hover,
   .chip.active {
-    background: var(--color-gold);
-    color: var(--color-bg);
-    border-color: var(--color-gold);
+    background: var(--color-emerald);
+    color: #FDF8F0;
+    border-color: var(--color-emerald);
   }
 
   .chip input {
@@ -287,12 +287,12 @@
 
   .range-input {
     width: 100%;
-    accent-color: var(--color-gold);
+    accent-color: var(--color-emerald);
   }
 
   .range-current {
     display: block;
-    color: var(--color-gold);
+    color: var(--color-emerald-dark);
     font-size: .82rem;
     line-height: 1.4;
     font-variant-numeric: tabular-nums;

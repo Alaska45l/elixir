@@ -75,11 +75,11 @@
 <style>
   .pdp { display: grid; grid-template-columns: 1.05fr .95fr; gap: 64px; align-items: start; }
   .panel { display: grid; gap: 26px; position: sticky; top: 98px; }
-  .topline { display: flex; justify-content: space-between; color: var(--color-gold); text-transform: uppercase; letter-spacing: .12em; font-size: .78rem; }
+  .topline { display: flex; justify-content: space-between; color: var(--color-emerald-dark); text-transform: uppercase; letter-spacing: .12em; font-size: .78rem; }
   h1 { font-size: clamp(3.2rem, 7vw, 6.8rem); line-height: .86; margin: 0; }
   .tagline { color: var(--color-text-muted); font-size: 1.15rem; line-height: 1.7; max-width: 50ch; }
   .description { color: var(--color-text-muted); font-size: .9rem; line-height: 1.75; max-width: 46ch; margin-top: -12px; }
-  .price { font-size: 1.5rem; color: var(--color-gold); }
+  .price { font-size: 1.5rem; color: var(--color-gold-dark); }
   .buy { display: grid; grid-template-columns: 120px 1fr; gap: 12px; }
   @media (max-width: 900px) {
     .pdp { grid-template-columns: 1fr; gap: 28px; }
