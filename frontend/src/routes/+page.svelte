@@ -6,15 +6,33 @@
   import type { PageData } from './$types';
   export let data: PageData;
 
-  let collectionImageIndices: number[] = [];
-  let cycleInterval: ReturnType<typeof setInterval> | undefined;
+  const DEFAULT_HERO_ROTATION_INTERVAL_MS = 8000;
 
+  type HeroImage = PageData['heroImages'][number];
+
+  let heroImageIndex = 0;
+  let collectionImageIndices: number[] = [];
+  let heroCycleInterval: ReturnType<typeof setInterval> | undefined;
+  let collectionCycleInterval: ReturnType<typeof setInterval> | undefined;
+
+  $: heroImages = resolveHeroImages(data.homepage, data.heroImages);
+  $: activeHeroImage = heroImages[heroImageIndex] ?? heroImages[0];
+  $: heroMetaImage = heroImages[0]?.url ?? data.homepage.hero_image_url;
+  $: if (heroImages.length > 0 && heroImageIndex >= heroImages.length) {
+    heroImageIndex = 0;
+  }
   $: if (data.collections) {
     collectionImageIndices = data.collections.map(() => 0);
   }
 
   onMount(() => {
-    cycleInterval = setInterval(() => {
+    if (data.homepage.hero_image_mode === 'product_covers' && heroImages.length > 1) {
+      heroCycleInterval = setInterval(() => {
+        heroImageIndex = (heroImageIndex + 1) % heroImages.length;
+      }, heroRotationInterval());
+    }
+
+    collectionCycleInterval = setInterval(() => {
       collectionImageIndices = collectionImageIndices.map((current, index) => {
         const total = data.collections[index]?.images.length ?? 1;
         return total > 1 ? (current + 1) % total : 0;
@@ -23,8 +41,26 @@
   });
 
   onDestroy(() => {
-    if (cycleInterval) clearInterval(cycleInterval);
+    if (heroCycleInterval) clearInterval(heroCycleInterval);
+    if (collectionCycleInterval) clearInterval(collectionCycleInterval);
   });
+
+  function resolveHeroImages(homepage: PageData['homepage'], productImages: HeroImage[]): HeroImage[] {
+    const fallback = homepage.hero_image_url
+      ? [{ url: homepage.hero_image_url, alt: 'ELIXIR Exclusive' }]
+      : [];
+    if (homepage.hero_image_mode !== 'product_covers') {
+      return fallback;
+    }
+    return productImages.length > 0 ? productImages : fallback;
+  }
+
+  function heroRotationInterval() {
+    const interval = Number(data.homepage.hero_rotation_interval_ms);
+    return Number.isFinite(interval) && interval >= 1000
+      ? interval
+      : DEFAULT_HERO_ROTATION_INTERVAL_MS;
+  }
 </script>
 
 <svelte:head>
@@ -32,11 +68,20 @@
   <meta name="description" content="Lorem ipsum dolor sit amet, consectetur adipiscing elit." />
   <meta property="og:title" content="ELIXIR Exclusive" />
   <meta property="og:description" content={data.homepage.hero_subheading} />
-  <meta property="og:image" content={data.homepage.hero_image_url} />
+  <meta property="og:image" content={heroMetaImage} />
 </svelte:head>
 
 <section class="hero">
-  <img class="hero-img" src={data.homepage.hero_image_url} alt="ELIXIR Exclusive" />
+  {#if activeHeroImage}
+    {#key activeHeroImage.url}
+      <img
+        class="hero-img"
+        src={activeHeroImage.url}
+        alt={activeHeroImage.alt}
+        transition:fade={{ duration: 900 }}
+      />
+    {/key}
+  {/if}
   <div class="hero-overlay"></div>
   <div class="hero-text container">
     <span class="watermark" aria-hidden="true">ELIXIR</span>
@@ -116,7 +161,7 @@
     height: 100%;
     object-fit: cover;
     object-position: center 30%;
-    will-change: transform;
+    will-change: transform, opacity;
   }
   .hero-overlay {
     position: absolute;

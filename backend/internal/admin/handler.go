@@ -519,7 +519,7 @@ func (h Handler) DiscountByID(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) Homepage(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		h.listTable(w, r, `SELECT hero_heading, hero_subheading, hero_image_url, hero_cta_label, hero_cta_url, editorial_heading, editorial_body, editorial_image_url FROM homepage_settings WHERE id=1`)
+		h.listTable(w, r, `SELECT hero_heading, hero_subheading, hero_image_url, COALESCE(hero_image_mode, 'product_covers') AS hero_image_mode, COALESCE(hero_rotation_interval_ms, 8000) AS hero_rotation_interval_ms, hero_cta_label, hero_cta_url, editorial_heading, editorial_body, editorial_image_url FROM homepage_settings WHERE id=1`)
 		return
 	}
 	var req homepageRequest
@@ -535,8 +535,8 @@ func (h Handler) Homepage(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
-	_, err := h.Pool.Exec(r.Context(), `INSERT INTO homepage_settings (id, hero_heading, hero_subheading, hero_image_url, hero_cta_label, hero_cta_url, editorial_heading, editorial_body, editorial_image_url) VALUES (1,$1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO UPDATE SET hero_heading=$1, hero_subheading=$2, hero_image_url=$3, hero_cta_label=$4, hero_cta_url=$5, editorial_heading=$6, editorial_body=$7, editorial_image_url=$8, updated_at=now()`,
-		req.HeroHeading, req.HeroSubheading, req.HeroImageURL, req.HeroCTALabel, req.HeroCTAURL, req.EditorialHeading, req.EditorialBody, req.EditorialImageURL)
+	_, err := h.Pool.Exec(r.Context(), `INSERT INTO homepage_settings (id, hero_heading, hero_subheading, hero_image_url, hero_image_mode, hero_rotation_interval_ms, hero_cta_label, hero_cta_url, editorial_heading, editorial_body, editorial_image_url) VALUES (1,$1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO UPDATE SET hero_heading=$1, hero_subheading=$2, hero_image_url=$3, hero_image_mode=$4, hero_rotation_interval_ms=$5, hero_cta_label=$6, hero_cta_url=$7, editorial_heading=$8, editorial_body=$9, editorial_image_url=$10, updated_at=now()`,
+		req.HeroHeading, req.HeroSubheading, req.HeroImageURL, req.HeroImageMode, req.HeroRotationIntervalMS, req.HeroCTALabel, req.HeroCTAURL, req.EditorialHeading, req.EditorialBody, req.EditorialImageURL)
 	if err != nil {
 		httpx.Error(w, r, http.StatusBadRequest, "no se pudo guardar")
 		return
@@ -551,8 +551,8 @@ func (h Handler) PublicHomepage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var item homepageRequest
-	err := h.Pool.QueryRow(r.Context(), `SELECT COALESCE(hero_heading,''), COALESCE(hero_subheading,''), COALESCE(hero_image_url,''), COALESCE(hero_cta_label,''), COALESCE(hero_cta_url,''), COALESCE(editorial_heading,''), COALESCE(editorial_body,''), COALESCE(editorial_image_url,'') FROM homepage_settings WHERE id=1`).
-		Scan(&item.HeroHeading, &item.HeroSubheading, &item.HeroImageURL, &item.HeroCTALabel, &item.HeroCTAURL, &item.EditorialHeading, &item.EditorialBody, &item.EditorialImageURL)
+	err := h.Pool.QueryRow(r.Context(), `SELECT COALESCE(hero_heading,''), COALESCE(hero_subheading,''), COALESCE(hero_image_url,''), COALESCE(hero_image_mode,'product_covers'), COALESCE(hero_rotation_interval_ms,8000), COALESCE(hero_cta_label,''), COALESCE(hero_cta_url,''), COALESCE(editorial_heading,''), COALESCE(editorial_body,''), COALESCE(editorial_image_url,'') FROM homepage_settings WHERE id=1`).
+		Scan(&item.HeroHeading, &item.HeroSubheading, &item.HeroImageURL, &item.HeroImageMode, &item.HeroRotationIntervalMS, &item.HeroCTALabel, &item.HeroCTAURL, &item.EditorialHeading, &item.EditorialBody, &item.EditorialImageURL)
 	if err != nil {
 		httpx.WriteJSON(w, http.StatusOK, homepageRequest{})
 		return
@@ -902,14 +902,16 @@ type discountWriteRequest struct {
 }
 
 type homepageRequest struct {
-	HeroHeading       string `json:"hero_heading"`
-	HeroSubheading    string `json:"hero_subheading"`
-	HeroImageURL      string `json:"hero_image_url"`
-	HeroCTALabel      string `json:"hero_cta_label"`
-	HeroCTAURL        string `json:"hero_cta_url"`
-	EditorialHeading  string `json:"editorial_heading"`
-	EditorialBody     string `json:"editorial_body"`
-	EditorialImageURL string `json:"editorial_image_url"`
+	HeroHeading            string `json:"hero_heading"`
+	HeroSubheading         string `json:"hero_subheading"`
+	HeroImageURL           string `json:"hero_image_url"`
+	HeroImageMode          string `json:"hero_image_mode"`
+	HeroRotationIntervalMS int    `json:"hero_rotation_interval_ms"`
+	HeroCTALabel           string `json:"hero_cta_label"`
+	HeroCTAURL             string `json:"hero_cta_url"`
+	EditorialHeading       string `json:"editorial_heading"`
+	EditorialBody          string `json:"editorial_body"`
+	EditorialImageURL      string `json:"editorial_image_url"`
 }
 
 type siteSettings struct {

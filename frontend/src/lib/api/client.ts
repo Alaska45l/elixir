@@ -45,6 +45,8 @@ export type HomepageSettings = {
   hero_heading: string;
   hero_subheading: string;
   hero_image_url: string;
+  hero_image_mode: 'static' | 'product_covers';
+  hero_rotation_interval_ms: number;
   hero_cta_label: string;
   hero_cta_url: string;
   editorial_heading: string;
@@ -173,7 +175,7 @@ export async function getProduct(slug: string, fetcher: typeof fetch = fetch): P
 export async function getHomepage(fetcher: typeof fetch = fetch): Promise<HomepageSettings> {
   try {
     const data = await apiFetch<HomepageSettings>('/api/homepage', undefined, fetcher);
-    return data.hero_heading ? data : defaultHomepage;
+    return data.hero_heading ? { ...defaultHomepage, ...data } : defaultHomepage;
   } catch {
     return defaultHomepage;
   }
@@ -213,6 +215,8 @@ export const defaultHomepage: HomepageSettings = {
   hero_heading: 'Lorem ipsum dolor sit amet',
   hero_subheading: 'Consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
   hero_image_url: 'https://images.unsplash.com/photo-1619994403073-2cec844b8e63?auto=format&fit=crop&w=1200&q=85',
+  hero_image_mode: 'product_covers',
+  hero_rotation_interval_ms: 8000,
   hero_cta_label: 'Catálogo',
   hero_cta_url: '/fragrances',
   editorial_heading: 'Lorem ipsum',

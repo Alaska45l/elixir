@@ -11,7 +11,7 @@
   onMount(async () => {
     try {
       const res = await apiFetch<{items: HomepageSettings[]}>('/api/admin/homepage');
-      form = res.items[0] ?? { ...defaultHomepage };
+      form = { ...defaultHomepage, ...(res.items[0] ?? {}) };
     } catch {
       form = { ...defaultHomepage };
     }
@@ -45,7 +45,33 @@
       <label class="field"><span>Texto del botón</span><input class="input" bind:value={form.hero_cta_label} /></label>
       <label class="field"><span>URL del botón</span><input class="input" bind:value={form.hero_cta_url} /></label>
     </div>
-    <label class="field"><span>Imagen del hero</span><input class="input" bind:value={form.hero_image_url} placeholder="https://..." /><small>Usá una imagen pública HTTPS ya subida.</small></label>
+    <div class="grid-2">
+      <label class="field">
+        <span>Modo de imagen del hero</span>
+        <select class="select" bind:value={form.hero_image_mode}>
+          <option value="product_covers">Portadas de productos</option>
+          <option value="static">Imagen fija</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Intervalo de rotación (ms)</span>
+        <input
+          class="input"
+          type="number"
+          min="1000"
+          max="60000"
+          step="1000"
+          bind:value={form.hero_rotation_interval_ms}
+          disabled={form.hero_image_mode !== 'product_covers'}
+        />
+        <small>8000 equivale a 8 segundos.</small>
+      </label>
+    </div>
+    <label class="field">
+      <span>Imagen del hero</span>
+      <input class="input" bind:value={form.hero_image_url} placeholder="https://..." />
+      <small>{form.hero_image_mode === 'product_covers' ? 'Se usa como fallback si no hay portadas de productos disponibles.' : 'Usá una imagen pública HTTPS ya subida.'}</small>
+    </label>
     {#if form.hero_image_url}<img class="preview wide" src={form.hero_image_url} alt="Vista previa del hero" />{/if}
   </section>
 

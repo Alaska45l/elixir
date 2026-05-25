@@ -15,6 +15,13 @@ var (
 	usernameRE = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 )
 
+const (
+	defaultHeroImageMode          = "product_covers"
+	defaultHeroRotationIntervalMS = 8000
+	minHeroRotationIntervalMS     = 1000
+	maxHeroRotationIntervalMS     = 60000
+)
+
 func normalizeProductPayload(p *productPayload) error {
 	p.Name = strings.TrimSpace(p.Name)
 	p.Slug = strings.ToLower(strings.TrimSpace(p.Slug))
@@ -160,11 +167,24 @@ func normalizeHomepagePayload(p *homepageRequest) error {
 	p.HeroHeading = strings.TrimSpace(p.HeroHeading)
 	p.HeroSubheading = strings.TrimSpace(p.HeroSubheading)
 	p.HeroImageURL = strings.TrimSpace(p.HeroImageURL)
+	p.HeroImageMode = strings.TrimSpace(p.HeroImageMode)
 	p.HeroCTALabel = strings.TrimSpace(p.HeroCTALabel)
 	p.HeroCTAURL = strings.TrimSpace(p.HeroCTAURL)
 	p.EditorialHeading = strings.TrimSpace(p.EditorialHeading)
 	p.EditorialBody = strings.TrimSpace(p.EditorialBody)
 	p.EditorialImageURL = strings.TrimSpace(p.EditorialImageURL)
+	if p.HeroImageMode == "" {
+		p.HeroImageMode = defaultHeroImageMode
+	}
+	if p.HeroImageMode != "static" && p.HeroImageMode != "product_covers" {
+		return errors.New("el modo de imagen del hero no es válido")
+	}
+	if p.HeroRotationIntervalMS <= 0 {
+		p.HeroRotationIntervalMS = defaultHeroRotationIntervalMS
+	}
+	if p.HeroRotationIntervalMS < minHeroRotationIntervalMS || p.HeroRotationIntervalMS > maxHeroRotationIntervalMS {
+		return errors.New("el intervalo del hero debe estar entre 1000 y 60000 milisegundos")
+	}
 	if p.HeroHeading == "" {
 		return errors.New("el título principal es obligatorio")
 	}

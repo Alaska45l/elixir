@@ -4,6 +4,7 @@ import type { PageServerLoad } from './$types';
 
 const FAMILIES = ['Oriental', 'Floral', 'Amaderado', 'Cítrico', 'Fresco', 'Gourmand'];
 const COLLECTION_LIMIT = 4;
+const HERO_IMAGE_LIMIT = 16;
 
 type CollectionData = {
   family: string;
@@ -11,13 +12,38 @@ type CollectionData = {
   href: string;
 };
 
+type HeroImageData = {
+  url: string;
+  alt: string;
+};
+
 export const load: PageServerLoad = async ({ fetch, parent }) => {
   const { homepage } = await parent();
-  const featured = await getProducts(fetch, '?featured=true&limit=3');
-  const collections = await buildCollections(fetch);
+  const [featured, collections, heroImages] = await Promise.all([
+    getProducts(fetch, '?featured=true&limit=3'),
+    buildCollections(fetch),
+    homepage.hero_image_mode === 'product_covers' ? buildHeroImages(fetch) : Promise.resolve([])
+  ]);
 
-  return { homepage, featured: featured.slice(0, 3), collections };
+  return { homepage, featured: featured.slice(0, 3), collections, heroImages };
 };
+
+async function buildHeroImages(fetcher: typeof fetch): Promise<HeroImageData[]> {
+  const products = await getProducts(fetcher, `?limit=${HERO_IMAGE_LIMIT}`);
+  const seen = new Set<string>();
+  const images: HeroImageData[] = [];
+
+  for (const product of products) {
+    const primary = product.images.find((image) => image.is_primary && image.url);
+    const image = primary ?? product.images.find((item) => item.url);
+    if (!image?.url || seen.has(image.url)) continue;
+
+    seen.add(image.url);
+    images.push({ url: image.url, alt: image.alt_text || product.name });
+  }
+
+  return images;
+}
 
 async function buildCollections(fetcher: typeof fetch): Promise<CollectionData[]> {
   const shuffled = [...FAMILIES].sort(() => Math.random() - 0.5);
