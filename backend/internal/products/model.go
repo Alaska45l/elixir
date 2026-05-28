@@ -46,16 +46,16 @@ type ProductImage struct {
 }
 
 type ListFilters struct {
-	Featured       *bool
-	Families       []string
-	Genders        []string
-	Concentrations []string
-	MinPrice       int64
-	MaxPrice       int64
-	InStock        bool
-	Search         string
-	Limit          int
-	Offset         int
+	Featured *bool
+	Families []string
+	Genders  []string
+	MinPrice int64
+	MaxPrice int64
+	InStock  bool
+	Search   string
+	Sort     string
+	Limit    int
+	Offset   int
 }
 
 type ListResult struct {

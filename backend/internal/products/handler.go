@@ -30,16 +30,16 @@ func (h Handler) List(w http.ResponseWriter, r *http.Request) {
 		featured = &v
 	}
 	filters := ListFilters{
-		Featured:       featured,
-		Families:       cleanValues(q["family"]),
-		Genders:        cleanValues(q["gender"]),
-		Concentrations: cleanValues(q["concentration"]),
-		InStock:        q.Get("in_stock") == "true",
-		Search:         q.Get("search"),
-		Limit:          intParam(q.Get("limit"), 24),
-		Offset:         intParam(q.Get("offset"), 0),
-		MinPrice:       int64Param(q.Get("min_price")),
-		MaxPrice:       int64Param(q.Get("max_price")),
+		Featured: featured,
+		Families: cleanValues(q["family"]),
+		Genders:  cleanValues(q["gender"]),
+		InStock:  q.Get("in_stock") == "true",
+		Search:   q.Get("search"),
+		Sort:     sortParam(q.Get("sort")),
+		Limit:    intParam(q.Get("limit"), 24),
+		Offset:   intParam(q.Get("offset"), 0),
+		MinPrice: int64Param(q.Get("min_price")),
+		MaxPrice: int64Param(q.Get("max_price")),
 	}
 	result, err := h.Service.List(r.Context(), filters)
 	if err != nil {
@@ -95,4 +95,13 @@ func cleanValues(values []string) []string {
 		}
 	}
 	return out
+}
+
+func sortParam(value string) string {
+	switch value {
+	case "price_asc", "price_desc":
+		return value
+	default:
+		return ""
+	}
 }

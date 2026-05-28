@@ -20,9 +20,9 @@
   }
 
   function getActiveFilterCount(current: URLSearchParams): number {
-    let count = current.getAll('family').length + current.getAll('gender').length + current.getAll('concentration').length;
+    let count = current.getAll('family').length + current.getAll('gender').length;
     if (current.get('in_stock') === 'true') count += 1;
-    if (Number(current.get('min_price') ?? 0) > 0 || Number(current.get('max_price') ?? 20000000) < 20000000) count += 1;
+    if (current.get('sort')) count += 1;
     return count;
   }
 </script>
@@ -58,14 +58,18 @@
 
 <section class="container catalog">
   <div>
-    <BentoProductMosaic products={data.products} />
-    {#if data.total > data.limit}
-      <nav class="pagination">
-        {#each Array(Math.ceil(data.total / data.limit)) as _, i}
-          {@const offset = i * data.limit}
-          <a class="btn" class:active={offset === data.offset} href={pageHref(offset)}>{i + 1}</a>
-        {/each}
-      </nav>
+    {#if data.loadError}
+      <div class="error-state" role="status">Error loading items</div>
+    {:else}
+      <BentoProductMosaic products={data.products} />
+      {#if data.total > data.limit}
+        <nav class="pagination">
+          {#each Array(Math.ceil(data.total / data.limit)) as _, i}
+            {@const offset = i * data.limit}
+            <a class="btn" class:active={offset === data.offset} href={pageHref(offset)}>{i + 1}</a>
+          {/each}
+        </nav>
+      {/if}
     {/if}
   </div>
 </section>
@@ -91,6 +95,15 @@
   .filter-summary span { color: var(--color-text); font-weight: 700; }
   .filter-summary strong { color: var(--color-emerald-dark); font-size: .86rem; font-weight: 700; }
   .catalog { display: grid; gap: 44px; align-items: start; }
+  .error-state {
+    min-height: 180px;
+    display: grid;
+    place-items: center;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 1rem;
+  }
   .pagination { display: flex; gap: 10px; margin-top: 44px; flex-wrap: wrap; }
   .pagination .active { border-color: var(--color-emerald); color: var(--color-emerald-dark); }
   @media (max-width: 860px) {

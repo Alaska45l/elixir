@@ -166,6 +166,7 @@
   .hero-overlay {
     position: absolute;
     inset: 0;
+    filter: blur(3px);
     background: linear-gradient(
       to top,
       rgba(25,23,20,0.92) 0%,
