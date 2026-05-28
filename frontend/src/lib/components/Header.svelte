@@ -1,9 +1,10 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import MobileNav from '$lib/components/MobileNav.svelte';
-  import type { NavItem, SiteSettings } from '$lib/api/client';
+  import { apiFetch, type ListResponse, type NavItem, type Product, type SiteSettings } from '$lib/api/client';
   import { cartCount } from '$lib/stores/cart';
   import { wishlist } from '$lib/stores/wishlist';
+  import { formatARS } from '$lib/utils/currency';
   import { onMount } from 'svelte';
 
   export let settings: SiteSettings;
@@ -21,6 +22,10 @@
   let mobileNavOpen = false;
   let activePanel: 'productos' | 'contacto' | 'nosotros' | '' = '';
   let closeTimer: ReturnType<typeof setTimeout> | undefined;
+  let carouselTimer: ReturnType<typeof setInterval> | null = null;
+  let featuredProducts: Product[] = [];
+  let currentCarouselIndex = 0;
+  let touchStartX = 0;
 
   $: activePath = $page.url.pathname;
   $: productLinks = includeUnisexLink(settings.navbar_product_categories);
@@ -28,6 +33,13 @@
   $: panelLinks = activePanel === 'productos' ? productLinks : activePanel === 'contacto' ? contactLinks : [];
   $: instagramHref = settings.footer_instagram_url || 'https://www.instagram.com/';
   $: tiktokHref = settings.footer_tiktok_url || 'https://www.tiktok.com/';
+  $: if (currentCarouselIndex >= featuredProducts.length) currentCarouselIndex = 0;
+  $: if (activePanel !== 'productos' || featuredProducts.length <= 1) {
+    clearCarouselTimer();
+    if (activePanel !== 'productos') currentCarouselIndex = 0;
+  } else if (!carouselTimer) {
+    startCarouselTimer();
+  }
 
   function includeUnisexLink(items: NavItem[]): NavItem[] {
     if (items.some((item) => item.href === unisexNavItem.href)) return items;
@@ -49,11 +61,54 @@
     closeTimer = setTimeout(() => activePanel = '', 150);
   }
 
+  function startCarouselTimer() {
+    clearCarouselTimer();
+    carouselTimer = setInterval(() => {
+      currentCarouselIndex = (currentCarouselIndex + 1) % featuredProducts.length;
+    }, 3500);
+  }
+
+  function clearCarouselTimer() {
+    if (!carouselTimer) return;
+    clearInterval(carouselTimer);
+    carouselTimer = null;
+  }
+
+  function selectCarouselIndex(index: number) {
+    currentCarouselIndex = index;
+    if (activePanel === 'productos' && featuredProducts.length > 1) startCarouselTimer();
+  }
+
+  function handleTouchStart(event: TouchEvent) {
+    touchStartX = event.touches[0]?.clientX ?? 0;
+  }
+
+  function handleTouchEnd(event: TouchEvent) {
+    if (featuredProducts.length <= 1) return;
+    const touchEndX = event.changedTouches[0]?.clientX ?? touchStartX;
+    const deltaX = touchEndX - touchStartX;
+    if (Math.abs(deltaX) < 40) return;
+    selectCarouselIndex((currentCarouselIndex + (deltaX < 0 ? 1 : featuredProducts.length - 1)) % featuredProducts.length);
+  }
+
   onMount(() => {
     const onScroll = () => scrolled = window.scrollY > 48;
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+
+    void apiFetch<ListResponse<Product>>('/api/products?featured=true')
+      .then((data) => {
+        featuredProducts = data.items ?? [];
+      })
+      .catch(() => {
+        featuredProducts = [];
+      });
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      clearCarouselTimer();
+      clearTimeout(closeTimer);
+    };
   });
 </script>
 
@@ -122,6 +177,46 @@
             <a href={item.href} on:click={() => activePanel = ''}>{item.label}</a>
           {/each}
         </section>
+
+        {#if activePanel === 'productos' && featuredProducts.length > 0}
+          <section class="featured-carousel" aria-label="Fragancias destacadas">
+            <div class="carousel-heading">
+              <p class="panel-label">Fragancias destacadas</p>
+              <span>{currentCarouselIndex + 1}/{featuredProducts.length}</span>
+            </div>
+
+            <div class="carousel-viewport" role="group" aria-label="Carrusel de fragancias destacadas" on:touchstart={handleTouchStart} on:touchend={handleTouchEnd}>
+              <div class="carousel-track" style="transform: translateX(-{currentCarouselIndex * 100}%);">
+                {#each featuredProducts as prod (prod.id)}
+                  {@const primaryImage = prod.images[0]?.url ?? '/elixir-logo.webp'}
+                  <a class="featured-slide" href={`/fragrances/${prod.slug}`} on:click={() => activePanel = ''}>
+                    <img src={primaryImage} alt={prod.images[0]?.alt_text ?? prod.name} loading="lazy" />
+                    <span class="slide-content">
+                      {#if prod.scent_family}<span class="slide-kicker">{prod.scent_family}</span>{/if}
+                      <strong>{prod.name}</strong>
+                      {#if prod.tagline}<span class="slide-tagline">{prod.tagline}</span>{/if}
+                      <span class="slide-price">Desde {formatARS(prod.min_price_ars_cents)}</span>
+                    </span>
+                  </a>
+                {/each}
+              </div>
+            </div>
+
+            {#if featuredProducts.length > 1}
+              <div class="carousel-dots" aria-label="Seleccionar fragancia destacada">
+                {#each featuredProducts as prod, index (prod.id)}
+                  <button
+                    type="button"
+                    class:active={index === currentCarouselIndex}
+                    aria-label={`Ver ${prod.name}`}
+                    aria-current={index === currentCarouselIndex ? 'true' : undefined}
+                    on:click={() => selectCarouselIndex(index)}
+                  ></button>
+                {/each}
+              </div>
+            {/if}
+          </section>
+        {/if}
       {/if}
     </div>
   </div>
@@ -152,21 +247,46 @@
   .menu-group { padding: 26px 0; }
   .mega-panel { position: absolute; top: 100%; left: 50%; width: 100vw; margin-left: -50vw; background: color-mix(in srgb, var(--color-surface) 94%, rgba(45,42,36,.08)); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); box-shadow: 0 28px 70px rgba(0,0,0,.12); opacity: 0; visibility: hidden; transform: translateY(-18px); pointer-events: none; transition: opacity .2s ease, transform .26s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .26s; }
   .mega-panel.open { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; transition-delay: 0s; }
-  .mega-inner { width: min(100%, 1440px); margin: 0 auto; min-height: 236px; padding: 34px max(24px, 5vw) 38px; display: grid; grid-template-columns: minmax(280px, 420px); gap: clamp(36px, 8vw, 120px); align-items: start; }
+  .mega-inner { width: min(100%, 1440px); margin: 0 auto; min-height: 236px; padding: 34px max(24px, 5vw) 38px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: clamp(28px, 5vw, 84px); align-items: start; }
   .mega-inner.nosotros-panel { grid-template-columns: minmax(320px, 1fr) minmax(210px, .45fr); }
   .panel-label { margin: 0 0 20px; color: var(--color-emerald-dark); font-size: .68rem; text-transform: uppercase; letter-spacing: .16em; font-weight: 700; }
   .mega-about h2 { margin: 0 0 18px; font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3.7rem); line-height: .95; font-weight: 600; }
   .mega-about p:not(.panel-label) { margin: 0 0 26px; color: var(--color-text); max-width: 46ch; line-height: 1.55; font-size: .98rem; }
   .mega-about span { display: block; color: var(--color-text-muted); font-size: .95rem; }
   .mega-links, .mega-social { display: grid; align-content: start; gap: 8px; }
+  .mega-links { max-width: 420px; }
   .mega-links a, .mega-social a { display: flex; align-items: center; gap: 10px; min-height: 34px; color: var(--color-text); font-size: 1.03rem; }
   .mega-links a::before { content: '+'; color: var(--color-emerald); font-size: .96rem; }
   .mega-links a::after, .mega-social a::after { display: none; }
   .mega-links a:hover, .mega-social a:hover { color: var(--color-emerald-dark); }
   .mega-social svg { color: var(--color-emerald); flex: 0 0 auto; }
+  .featured-carousel { min-width: 0; width: 100%; max-width: 560px; justify-self: end; font-family: var(--font-text); }
+  .carousel-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  .carousel-heading .panel-label { margin-bottom: 14px; color: var(--color-gold); }
+  .carousel-heading span { color: var(--color-text-muted); font-size: .76rem; letter-spacing: .08em; }
+  .carousel-viewport { overflow: hidden; border: 1px solid var(--color-border); border-radius: 8px; background: color-mix(in srgb, var(--color-surface) 86%, var(--color-gold) 14%); touch-action: pan-y; }
+  .carousel-track { display: flex; will-change: transform; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+  .featured-slide { position: relative; flex: 0 0 100%; min-height: 210px; display: grid; align-items: end; overflow: hidden; color: #FDF8F0; isolation: isolate; }
+  .featured-slide::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(24,21,18,.86), rgba(24,21,18,.34) 58%, rgba(24,21,18,.12)); transition: background .28s ease; }
+  .featured-slide img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(0.25, 1, 0.5, 1); }
+  .featured-slide:hover img { transform: scale(1.045); }
+  .featured-slide:hover::after { background: linear-gradient(90deg, rgba(24,21,18,.9), rgba(24,21,18,.28) 58%, rgba(24,21,18,.08)); }
+  .slide-content { display: grid; gap: 7px; max-width: min(100%, 34ch); padding: 22px; }
+  .slide-kicker { color: var(--color-gold); font-size: .68rem; letter-spacing: .15em; text-transform: uppercase; font-weight: 700; }
+  .slide-content strong { color: #FDF8F0; font-family: var(--font-display); font-size: clamp(1.55rem, 2.2vw, 2.25rem); line-height: 1; font-weight: 600; }
+  .slide-tagline { color: rgba(255,253,248,.78); font-size: .86rem; line-height: 1.45; }
+  .slide-price { width: fit-content; margin-top: 2px; color: var(--color-gold); font-size: .82rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .carousel-dots { display: flex; justify-content: center; gap: 8px; padding-top: 14px; }
+  .carousel-dots button { width: 26px; height: 26px; border: 0; padding: 0; background: transparent; display: grid; place-items: center; color: var(--color-text-muted); }
+  .carousel-dots button::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; transition: transform .2s ease, background .2s ease; }
+  .carousel-dots button.active { color: var(--color-gold); }
+  .carousel-dots button.active::before, .carousel-dots button:hover::before { transform: scale(1.45); background: var(--color-gold); }
   .hamburger { display: none; background: transparent; border: 0; color: var(--color-text); padding: 4px; align-items: center; justify-content: center; }
   .cart-btn { border: 0; background: transparent; color: var(--color-text); padding: 4px; position: relative; display: flex; align-items: center; }
   .cart-count { position: absolute; top: -4px; right: -6px; min-width: 16px; height: 16px; border-radius: 50%; background: var(--color-gold); color: #FDF8F0; font-size: 0.68rem; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+  @media (max-width: 860px) {
+    .featured-carousel { max-width: none; justify-self: stretch; }
+  }
   @media (max-width: 720px) {
     .menu-backdrop { display: none; }
     .mega-panel { display: none; }
