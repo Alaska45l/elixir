@@ -1,3 +1,4 @@
+import { browser } from '$app/environment';
 import { env } from '$env/dynamic/public';
 
 export type Variant = {
@@ -131,7 +132,8 @@ export type ListResponse<T> = { items: T[]; total?: number; limit?: number; offs
 
 export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typeof fetch = fetch): Promise<T> {
   const configuredBase = env.PUBLIC_API_URL?.trim() ?? '';
-  const base = path.startsWith('/api/admin') ? '' : configuredBase;
+  const shouldUseSameOriginProxy = browser && path.startsWith('/api/');
+  const base = shouldUseSameOriginProxy || path.startsWith('/api/admin') ? '' : configuredBase;
   const res = await fetcher(`${base}${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
