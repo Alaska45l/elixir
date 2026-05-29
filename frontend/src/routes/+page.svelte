@@ -156,17 +156,17 @@
   }
   .hero-img {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    inset: -6px;
+    width: calc(100% + 12px);
+    height: calc(100% + 12px);
     object-fit: cover;
     object-position: center 30%;
+    filter: blur(3px);
     will-change: transform, opacity;
   }
   .hero-overlay {
     position: absolute;
     inset: 0;
-    filter: blur(3px);
     background: linear-gradient(
       to top,
       rgba(25,23,20,0.92) 0%,
