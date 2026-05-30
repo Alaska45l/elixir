@@ -17,7 +17,6 @@
   $: selectedFamilies = params.getAll('family');
   $: selectedGenders = params.getAll('gender');
   $: selectedSort = params.get('sort') ?? '';
-  $: inStock = params.get('in_stock') === 'true';
 
   function beginDrag(event: PointerEvent) {
     dragging = true;
@@ -102,13 +101,6 @@
             </div>
           </div>
 
-          <div class="filter-box" role="group" aria-labelledby="mobile-stock-filter">
-            <span id="mobile-stock-filter" class="filter-title">Stock</span>
-            <label class="chip stock-chip" class:active={inStock}>
-              <input name="in_stock" value="true" type="checkbox" checked={inStock} />
-              En stock
-            </label>
-          </div>
         </div>
 
         <div class="bottom-actions">
@@ -256,10 +248,6 @@
     inset: 0;
     opacity: 0;
     pointer-events: none;
-  }
-
-  .stock-chip {
-    width: fit-content;
   }
 
   .bottom-actions {

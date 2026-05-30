@@ -959,8 +959,6 @@ func defaultSiteSettings() siteSettings {
 		NavbarProductCategories: []navItem{
 			{Label: "Fragancias Masculinas", Href: "/fragrances?gender=Masculino"},
 			{Label: "Fragancias Femeninas", Href: "/fragrances?gender=Femenino"},
-			{Label: "Línea Oriental", Href: "/fragrances?family=Oriental"},
-			{Label: "Línea Amaderada", Href: "/fragrances?family=Amaderado"},
 		},
 		LowStockThreshold: 5,
 	}

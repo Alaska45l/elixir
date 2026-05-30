@@ -11,7 +11,6 @@
   $: selectedFamilies = params.getAll('family');
   $: selectedGenders = params.getAll('gender');
   $: selectedSort = params.get('sort') ?? '';
-  $: inStock = params.get('in_stock') === 'true';
 
   function submitOnChange(event: Event) {
     (event.currentTarget as HTMLFormElement).requestSubmit();
@@ -57,13 +56,6 @@
       </div>
     </div>
 
-    <div class="filter-box stock-box" role="group" aria-labelledby="desktop-stock-filter">
-      <span id="desktop-stock-filter" class="filter-title">Stock</span>
-      <label class="chip stock-chip" class:active={inStock}>
-        <input name="in_stock" value="true" type="checkbox" checked={inStock} />
-        En stock
-      </label>
-    </div>
   </div>
 
   <div class="filter-actions">
@@ -82,7 +74,7 @@
 
   .filter-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
     align-items: stretch;
   }
@@ -100,7 +92,7 @@
   }
 
   .sort-box {
-    grid-column: span 2;
+    grid-column: span 1;
   }
 
   .sort-box .chips {
@@ -168,10 +160,6 @@
     pointer-events: none;
   }
 
-  .stock-chip {
-    width: fit-content;
-  }
-
   .filter-actions {
     display: flex;
     gap: 12px;
@@ -188,6 +176,10 @@
   @media (max-width: 1180px) {
     .filter-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sort-box {
+      grid-column: span 2;
     }
   }
 </style>

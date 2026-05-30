@@ -21,7 +21,6 @@
 
   function getActiveFilterCount(current: URLSearchParams): number {
     let count = current.getAll('family').length + current.getAll('gender').length;
-    if (current.get('in_stock') === 'true') count += 1;
     if (current.get('sort')) count += 1;
     return count;
   }
@@ -30,13 +29,13 @@
 <svelte:window bind:innerWidth />
 
 <svelte:head>
-  <title>Catálogo | ELIXIR Exclusive</title>
+  <title>Fragancias | ELIXIR Exclusive</title>
   <meta name="description" content="Catálogo de fragancias ELIXIR Exclusive: orientales, florales, amaderadas, cítricas, frescas y gourmand." />
 </svelte:head>
 
 <section class="container page-pad catalog-head">
   <p class="eyebrow">Catálogo</p>
-  <h1 class="display section-title">Fragancias para presencia precisa</h1>
+  <h1 class="display section-title">Fragancias</h1>
   <div class="gold-rule"></div>
   <button class="btn" type="button" on:click={() => searchOpen = true}>Buscar fragancias</button>
 </section>

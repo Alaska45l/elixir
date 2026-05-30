@@ -246,9 +246,7 @@ export const defaultSettings: SiteSettings = {
   navbar_product_categories: [
     { label: 'Fragancias Unisex', href: '/fragrances?gender=Unisex' },
     { label: 'Fragancias Masculinas', href: '/fragrances?gender=Masculino' },
-    { label: 'Fragancias Femeninas', href: '/fragrances?gender=Femenino' },
-    { label: 'Línea Oriental', href: '/fragrances?family=Oriental' },
-    { label: 'Línea Amaderada', href: '/fragrances?family=Amaderado' }
+    { label: 'Fragancias Femeninas', href: '/fragrances?gender=Femenino' }
   ],
   low_stock_threshold: 5
 };

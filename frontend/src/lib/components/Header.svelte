@@ -16,6 +16,11 @@
     { label: 'Envíos', href: '/envios' },
     { label: 'Contacta con nosotros', href: '/contacto' }
   ];
+  const fragranceFamilies = ['Oriental', 'Floral', 'Amaderado', 'Cítrico', 'Fresco', 'Gourmand'];
+  const fragranceFamilyLinks = fragranceFamilies.map((family) => ({
+    label: family,
+    href: `/fragrances?family=${encodeURIComponent(family)}`
+  }));
   const unisexNavItem = { label: 'Fragancias Unisex', href: '/fragrances?gender=Unisex' };
 
   let scrolled = false;
@@ -29,8 +34,9 @@
 
   $: activePath = $page.url.pathname;
   $: productLinks = includeUnisexLink(settings.navbar_product_categories);
+  $: desktopProductLinks = productLinks.filter((item) => !isFragranceFamilyLink(item.href));
   $: panelTitle = activePanel === 'productos' ? 'Productos' : 'Contacto';
-  $: panelLinks = activePanel === 'productos' ? productLinks : activePanel === 'contacto' ? contactLinks : [];
+  $: panelLinks = activePanel === 'productos' ? desktopProductLinks : activePanel === 'contacto' ? contactLinks : [];
   $: instagramHref = settings.footer_instagram_url || 'https://www.instagram.com/';
   $: tiktokHref = settings.footer_tiktok_url || 'https://www.tiktok.com/';
   $: if (currentCarouselIndex >= featuredProducts.length) currentCarouselIndex = 0;
@@ -44,6 +50,10 @@
   function includeUnisexLink(items: NavItem[]): NavItem[] {
     if (items.some((item) => item.href === unisexNavItem.href)) return items;
     return [unisexNavItem, ...items];
+  }
+
+  function isFragranceFamilyLink(href: string): boolean {
+    return href.includes('fragrances?family=');
   }
 
   function isActive(href: string): boolean {
@@ -177,6 +187,15 @@
             <a href={item.href} on:click={() => activePanel = ''}>{item.label}</a>
           {/each}
         </section>
+
+        {#if activePanel === 'productos'}
+          <section class="mega-links" aria-label="Familia">
+            <p class="panel-label">Familia</p>
+            {#each fragranceFamilyLinks as item}
+              <a href={item.href} on:click={() => activePanel = ''}>{item.label}</a>
+            {/each}
+          </section>
+        {/if}
 
         {#if activePanel === 'productos' && featuredProducts.length > 0}
           <section class="featured-carousel" aria-label="Fragancias destacadas">
