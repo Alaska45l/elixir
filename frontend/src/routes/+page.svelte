@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import ProductGrid from '$lib/components/ProductGrid.svelte';
+  import StoryCarousel from '$lib/components/home/StoryCarousel.svelte';
   import { reveal } from '$lib/utils/reveal';
   import type { PageData } from './$types';
   export let data: PageData;
@@ -103,14 +104,7 @@
   <ProductGrid products={data.featured} />
 </section>
 
-<section class="container editorial" use:reveal>
-  <div class="copy">
-    <p class="eyebrow">{data.homepage.editorial_heading}</p>
-    <div class="gold-rule"></div>
-    <p>{data.homepage.editorial_body}</p>
-  </div>
-  <img src={data.homepage.editorial_image_url} alt="Editorial ELIXIR" />
-</section>
+<StoryCarousel />
 
 {#if data.collections.length}
   <section class="container collections-section" use:reveal>
@@ -204,34 +198,6 @@
   .actions { display: flex; gap: 16px; align-items: center; }
   .actions .btn.text { padding: 0 14px; color: var(--color-on-image); }
   .actions .btn.text:hover { color: var(--color-emerald); }
-  .editorial {
-    display: grid;
-    grid-template-columns: .9fr 1.1fr;
-    gap: 48px;
-    align-items: center;
-    border-radius: 16px;
-    background: var(--color-surface);
-    padding: 48px;
-    overflow: hidden;
-    box-shadow: 0 4px 32px rgba(0,0,0,0.2);
-  }
-  .editorial .copy {
-    padding-left: 0;
-    padding-right: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  .editorial p:last-child { color: var(--color-text-muted); font-size: 1.2rem; line-height: 1.8; }
-  .editorial img {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    height: auto;
-    aspect-ratio: 5 / 4;
-    object-fit: cover;
-    border-radius: 12px;
-  }
   .collections-section {
     margin-top: clamp(64px, 8vw, 104px);
     padding-bottom: 28px;
@@ -340,21 +306,6 @@
     .actions { flex-direction: column; align-items: flex-start; }
   }
   @media (max-width: 860px) {
-    .editorial {
-      grid-template-columns: 1fr;
-      padding: 32px;
-      gap: 0;
-    }
-    .editorial .copy {
-      padding-right: 0;
-      padding-bottom: 32px;
-    }
-    .editorial img {
-      width: 100%;
-      height: auto;
-      aspect-ratio: 16 / 9;
-      border-radius: 12px;
-    }
     .collections-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
     .collection-card, .hero-card { grid-row: auto; min-height: 280px; }
     .single-collection-grid,

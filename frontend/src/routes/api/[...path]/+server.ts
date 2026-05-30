@@ -1,5 +1,5 @@
 import { env as privateEnv } from '$env/dynamic/private';
-import { env as publicEnv } from '$env/dynamic/public';
+import { PUBLIC_API_URL } from '$env/static/public';
 import type { RequestHandler } from './$types';
 
 const hopByHopHeaders = new Set([
@@ -13,7 +13,7 @@ const hopByHopHeaders = new Set([
 ]);
 
 const proxy: RequestHandler = async ({ request, url, fetch }) => {
-  const backend = (privateEnv.PRIVATE_API_URL || publicEnv.PUBLIC_API_URL || 'http://localhost:8080').replace(/\/$/, '');
+  const backend = (privateEnv.PRIVATE_API_URL || PUBLIC_API_URL || 'http://localhost:8080').replace(/\/$/, '');
   const path = url.pathname.replace(/^\/api\/?/, '');
   const target = `${backend}/api/${path}${url.search}`;
   const headers = new Headers(request.headers);

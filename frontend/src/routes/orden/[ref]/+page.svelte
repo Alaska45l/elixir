@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { env } from '$env/dynamic/public';
+  import { PUBLIC_WHATSAPP_NUMBER } from '$env/static/public';
   import { onMount } from 'svelte';
   import { apiFetch } from '$lib/api/client';
   import type { Order } from '$lib/api/client';
@@ -33,7 +33,7 @@
   {#if order}
     <div class="summary"><span>Total</span><strong>{formatARS(order.total_ars_cents)}</strong><span>Estado</span><strong>{order.status}</strong></div>
   {/if}
-  <a class="btn" href={`https://wa.me/${env.PUBLIC_WHATSAPP_NUMBER ?? '5491100000000'}?text=${encodeURIComponent(`Hola, consulto por la orden ${data.ref}`)}`} target="_blank" rel="noreferrer">Consultar por WhatsApp</a>
+  <a class="btn" href={`https://wa.me/${PUBLIC_WHATSAPP_NUMBER || '5491100000000'}?text=${encodeURIComponent(`Hola, consulto por la orden ${data.ref}`)}`} target="_blank" rel="noreferrer">Consultar por WhatsApp</a>
 </section>
 
 <style>

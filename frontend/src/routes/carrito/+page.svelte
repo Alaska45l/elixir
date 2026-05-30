@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { env } from '$env/dynamic/public';
+  import { PUBLIC_WHATSAPP_NUMBER } from '$env/static/public';
   import { apiFetch, quoteShipping } from '$lib/api/client';
   import type { CartValidation, DiscountValidation, Order, ShippingQuoteOption } from '$lib/api/client';
   import QuantityStepper from '$lib/components/QuantityStepper.svelte';
@@ -82,7 +82,7 @@
   }
   function wa() {
     const summary = $cart.map((i) => `${i.productName} ${i.sizeML}ml x${i.quantity}`).join(', ');
-    return `https://wa.me/${env.PUBLIC_WHATSAPP_NUMBER ?? '5491100000000'}?text=${encodeURIComponent(`Hola, quiero consultar por mi carrito: ${summary}`)}`;
+    return `https://wa.me/${PUBLIC_WHATSAPP_NUMBER || '5491100000000'}?text=${encodeURIComponent(`Hola, quiero consultar por mi carrito: ${summary}`)}`;
   }
 </script>
 
