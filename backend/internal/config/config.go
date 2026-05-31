@@ -43,10 +43,11 @@ func Load() Config {
 	if strings.Contains(databaseURL, "user:pass@host/dbname") {
 		databaseURL = ""
 	}
+	frontendURL := env("FRONTEND_URL", "http://localhost:5173")
 	return Config{
 		AppEnv:            env("APP_ENV", "development"),
 		Port:              env("PORT", "8080"),
-		FrontendURL:       env("FRONTEND_URL", "http://localhost:5173"),
+		FrontendURL:       frontendURL,
 		BackendURL:        env("BACKEND_URL", "http://localhost:8080"),
 		DatabaseURL:       databaseURL,
 		SessionSecret:     env("SESSION_SECRET", "dev-secret-change-me-dev-secret-change-me-dev-secret-change-me"),
@@ -54,7 +55,7 @@ func Load() Config {
 		SessionSameSite:   env("SESSION_SAME_SITE", "strict"),
 		MPAccessToken:     os.Getenv("MP_ACCESS_TOKEN"),
 		MPWebhookSecret:   os.Getenv("MP_WEBHOOK_SECRET"),
-		AllowedOrigins:    split(env("ALLOWED_ORIGINS", "http://localhost:5173")),
+		AllowedOrigins:    allowedOrigins(env("ALLOWED_ORIGINS", ""), frontendURL),
 		WhatsAppNumber:    env("WHATSAPP_NUMBER", "5491100000000"),
 		LogLevel:          env("LOG_LEVEL", "info"),
 		CorreoArgAPIKey:   os.Getenv("CORREO_ARG_API_KEY"),
@@ -110,6 +111,24 @@ func split(v string) []string {
 		if s := strings.TrimSpace(part); s != "" {
 			out = append(out, s)
 		}
+	}
+	return out
+}
+
+func allowedOrigins(rawAllowedOrigins, frontendURL string) []string {
+	return appendUniqueOrigins(split(rawAllowedOrigins), frontendURL)
+}
+
+func appendUniqueOrigins(origins []string, candidates ...string) []string {
+	seen := make(map[string]bool, len(origins)+len(candidates))
+	out := make([]string, 0, len(origins)+len(candidates))
+	for _, origin := range append(origins, candidates...) {
+		origin = strings.TrimRight(strings.TrimSpace(origin), "/")
+		if origin == "" || seen[origin] {
+			continue
+		}
+		seen[origin] = true
+		out = append(out, origin)
 	}
 	return out
 }

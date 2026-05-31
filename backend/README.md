@@ -28,5 +28,6 @@ curl http://localhost:8080/api/products/nocturno-oud
 - Start command: `./app`
 - Health check path: `/api/health`
 - Set all variables from `.env.example` in the Render dashboard.
+- Set `FRONTEND_URL` to the active frontend URL. It is automatically allowed for CORS/CSRF; use `ALLOWED_ORIGINS` only for additional browser origins.
 - Image uploads require Cloudflare R2 variables. `R2_PUBLIC_URL` should be the public bucket/custom-domain base URL, without a trailing slash.
 - WebP encoding uses CGO, so the build environment must have a C compiler available.
