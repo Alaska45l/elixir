@@ -1,12 +1,15 @@
 <script lang="ts">
-  import { apiFetch, defaultHomepage } from '$lib/api/client';
+  import { apiFetch, defaultHomepage, uploadAdminImage } from '$lib/api/client';
   import type { HomepageSettings } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import { onMount } from 'svelte';
 
+  type HomepageImageField = 'hero_image_url' | 'editorial_image_url';
+
   let form: HomepageSettings = { ...defaultHomepage };
   let error = '';
   let saving = false;
+  let uploadingImageField: HomepageImageField | null = null;
 
   onMount(async () => {
     try {
@@ -19,6 +22,10 @@
 
   async function save() {
     error = '';
+    if (uploadingImageField !== null) {
+      error = 'Esperá a que termine la carga de imagen.';
+      return;
+    }
     saving = true;
     try {
       await apiFetch('/api/admin/homepage', { method: 'PUT', body: JSON.stringify(form) });
@@ -27,6 +34,27 @@
       error = err instanceof Error ? err.message : 'No se pudo guardar la homepage';
     } finally {
       saving = false;
+    }
+  }
+
+  async function uploadImage(event: Event, field: HomepageImageField) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    error = '';
+    uploadingImageField = field;
+    try {
+      const url = await uploadAdminImage(file, 'homepage');
+      form = { ...form, [field]: url };
+      toast.push('Imagen subida como WebP');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo subir la imagen';
+      error = message;
+      toast.push(message, 'error');
+    } finally {
+      uploadingImageField = null;
+      input.value = '';
     }
   }
 </script>
@@ -69,7 +97,13 @@
     </div>
     <label class="field">
       <span>Imagen del hero</span>
-      <input class="input" bind:value={form.hero_image_url} placeholder="https://..." />
+      <div class="url-upload">
+        <input class="input" bind:value={form.hero_image_url} placeholder="https://..." />
+        <label class:disabled={uploadingImageField !== null} class="upload-control">
+          <span>{uploadingImageField === 'hero_image_url' ? 'Subiendo...' : 'Subir'}</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadingImageField !== null} on:change={(event) => uploadImage(event, 'hero_image_url')} />
+        </label>
+      </div>
       <small>{form.hero_image_mode === 'product_covers' ? 'Se usa como fallback si no hay portadas de productos disponibles.' : 'Usá una imagen pública HTTPS ya subida.'}</small>
     </label>
     {#if form.hero_image_url}<img class="preview wide" src={form.hero_image_url} alt="Vista previa del hero" />{/if}
@@ -79,12 +113,21 @@
     <h2>Bloque editorial</h2>
     <label class="field"><span>Título editorial</span><input class="input" bind:value={form.editorial_heading} /></label>
     <label class="field"><span>Texto editorial</span><textarea class="textarea" bind:value={form.editorial_body}></textarea></label>
-    <label class="field"><span>Imagen editorial</span><input class="input" bind:value={form.editorial_image_url} placeholder="https://..." /></label>
+    <label class="field">
+      <span>Imagen editorial</span>
+      <div class="url-upload">
+        <input class="input" bind:value={form.editorial_image_url} placeholder="https://..." />
+        <label class:disabled={uploadingImageField !== null} class="upload-control">
+          <span>{uploadingImageField === 'editorial_image_url' ? 'Subiendo...' : 'Subir'}</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadingImageField !== null} on:change={(event) => uploadImage(event, 'editorial_image_url')} />
+        </label>
+      </div>
+    </label>
     {#if form.editorial_image_url}<img class="preview" src={form.editorial_image_url} alt="Vista previa editorial" />{/if}
   </section>
 
   {#if error}<p class="error">{error}</p>{/if}
-  <button class="btn primary" disabled={saving}>{saving ? 'Guardando...' : 'Guardar homepage'}</button>
+  <button class="btn primary" disabled={saving || uploadingImageField !== null}>{saving ? 'Guardando...' : 'Guardar homepage'}</button>
 </form>
 
 <style>
@@ -96,4 +139,9 @@
   .error { margin: 0; color: var(--color-danger-soft); }
   .preview { width: 320px; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--color-border); }
   .preview.wide { width: min(100%, 720px); aspect-ratio: 16/7; }
+  .url-upload { display: grid; grid-template-columns: minmax(0, 1fr) 108px; gap: 10px; align-items: center; }
+  .upload-control { min-height: 46px; padding: 0 14px; border: 1px solid var(--color-border); color: var(--color-text); display: inline-flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer; white-space: nowrap; }
+  .upload-control input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-control.disabled { opacity: .55; pointer-events: none; }
+  @media (max-width: 620px) { .url-upload { grid-template-columns: 1fr; } }
 </style>

@@ -12,6 +12,7 @@ import (
 
 	"elixir/backend/internal/audit"
 	"elixir/backend/internal/httpx"
+	"elixir/backend/internal/media"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,6 +22,7 @@ type Handler struct {
 	Pool     *pgxpool.Pool
 	Auth     AuthService
 	Sessions SessionManager
+	Media    *media.StorageService
 }
 
 func (h Handler) Login(w http.ResponseWriter, r *http.Request) {

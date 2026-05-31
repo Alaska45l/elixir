@@ -16,6 +16,7 @@ import (
 	"elixir/backend/internal/db"
 	"elixir/backend/internal/discount"
 	"elixir/backend/internal/health"
+	"elixir/backend/internal/media"
 	"elixir/backend/internal/middleware"
 	"elixir/backend/internal/orders"
 	"elixir/backend/internal/payments"
@@ -41,6 +42,10 @@ func main() {
 	sessions := admin.SessionManager{Secret: cfg.SessionSecret, Duration: cfg.SessionDuration, Secure: secureCookies, SameSite: admin.ResolveSameSite(cfg.SessionSameSite, secureCookies)}
 	discountSvc := discount.Service{Repo: discount.Repository{Pool: pool}}
 	orderSvc := orders.Service{Repo: orders.DBRepository{Pool: pool}, Discount: discountSvc}
+	storageSvc, err := media.NewStorageService(cfg.R2AccountID, cfg.R2AccessKey, cfg.R2SecretKey, cfg.R2BucketName, cfg.R2PublicURL)
+	if err != nil {
+		log.Fatal("media storage:", err)
+	}
 
 	productHandler := products.Handler{Service: products.Service{Repo: products.Repository{Pool: pool}}}
 	orderHandler := orders.Handler{Service: orderSvc}
@@ -48,7 +53,7 @@ func main() {
 		Repo: payments.DBRepository{Pool: pool},
 		MP:   payments.MercadoPagoClient{AccessToken: cfg.MPAccessToken, BackendURL: cfg.BackendURL, FrontendURL: cfg.FrontendURL},
 	}}
-	adminHandler := admin.Handler{Pool: pool, Sessions: sessions, Auth: admin.AuthService{Pool: pool, Sessions: sessions, Limiter: loginLimiter}}
+	adminHandler := admin.Handler{Pool: pool, Sessions: sessions, Auth: admin.AuthService{Pool: pool, Sessions: sessions, Limiter: loginLimiter}, Media: storageSvc}
 	contactHandler := contact.Handler{Service: contact.Service{Pool: pool}}
 	shippingProviders := []shipping.ShippingProvider{
 		shipping.LocalPickupProvider{},
@@ -63,63 +68,72 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestLogger)
 	r.Use(middleware.CORS(cfg.AllowedOrigins))
-	r.Use(middleware.BodyLimit(2 << 20))
-
-	r.Mount("/", health.Handler{Pool: pool, Started: time.Now(), Version: "1.0.0"}.Routes())
-	r.Get("/api/homepage", adminHandler.PublicHomepage)
-	r.Get("/api/settings", adminHandler.PublicSettings)
-	r.With(apiLimiter.Middleware).Get("/api/products/search", productHandler.Search)
-	r.Mount("/api/products", productHandler.Routes())
-	r.With(apiLimiter.Middleware).Post("/api/cart/validate", orderHandler.ValidateCart)
-	r.With(apiLimiter.Middleware).Post("/api/discount/validate", discount.Handler{Service: discountSvc}.Validate)
-	r.Post("/api/orders", orderHandler.Create)
-	r.Get("/api/orders/{external_reference}", orderHandler.Status)
-	r.Post("/api/checkout/mercadopago/preference", paymentHandler.CreatePreference)
-	r.Post("/api/payments/mercadopago/webhook", paymentHandler.Webhook)
-	r.Get("/api/shipping/zones", shippingHandler.Zones)
-	r.Post("/api/shipping/quote", shippingHandler.Quote)
-	r.Post("/api/contact", contactHandler.Message)
-	r.Post("/api/contact/abandoned-cart", contactHandler.AbandonedCart)
 
 	adminCSRF := middleware.CSRF(cfg.AllowedOrigins, cfg.BackendURL)
-	r.With(middleware.NoStore, adminCSRF, loginLimiter.Middleware).Post("/api/admin/login", adminHandler.Login)
-	r.With(middleware.NoStore, adminCSRF).Post("/api/admin/logout", adminHandler.Logout)
-	r.Group(func(ar chi.Router) {
-		ar.Use(middleware.NoStore)
-		ar.Use(adminCSRF)
-		ar.Use(middleware.AdminSession(sessions))
-		ar.Get("/api/admin/me", adminHandler.Me)
-		ar.Post("/api/admin/password", adminHandler.ChangePassword)
-		ar.Get("/api/admin/users", adminHandler.AdminUsers)
-		ar.Post("/api/admin/users", adminHandler.AdminUsers)
-		ar.Post("/api/admin/users/{username}/password", adminHandler.AdminUserByUsername)
-		ar.Delete("/api/admin/users/{username}", adminHandler.AdminUserByUsername)
-		ar.Get("/api/admin/metrics", adminHandler.Metrics)
-		ar.Get("/api/admin/products", adminHandler.AdminProducts)
-		ar.Post("/api/admin/products", adminHandler.SaveProduct)
-		ar.Get("/api/admin/products/{id}", adminHandler.AdminProductByID)
-		ar.Put("/api/admin/products/{id}", adminHandler.SaveProduct)
-		ar.Put("/api/admin/products/{id}/active", adminHandler.UpdateProductActive)
-		ar.Delete("/api/admin/products/{id}", adminHandler.DeleteProduct)
-		ar.Post("/api/admin/products/import", adminHandler.ImportProducts)
-		ar.Get("/api/admin/orders", adminHandler.Orders)
-		ar.Get("/api/admin/orders/export", adminHandler.ExportOrders)
-		ar.Put("/api/admin/orders/{id}", adminHandler.UpdateOrder)
-		ar.Get("/api/admin/discounts", adminHandler.Discounts)
-		ar.Post("/api/admin/discounts", adminHandler.Discounts)
-		ar.Put("/api/admin/discounts/{id}", adminHandler.DiscountByID)
-		ar.Delete("/api/admin/discounts/{id}", adminHandler.DiscountByID)
-		ar.Get("/api/admin/homepage", adminHandler.Homepage)
-		ar.Put("/api/admin/homepage", adminHandler.Homepage)
-		ar.Get("/api/admin/settings", adminHandler.Settings)
-		ar.Put("/api/admin/settings", adminHandler.Settings)
-		ar.Get("/api/admin/shipping/zones", adminHandler.AdminShippingZones)
-		ar.Post("/api/admin/shipping/zones", adminHandler.AdminShippingZones)
-		ar.Put("/api/admin/shipping/zones/{id}", adminHandler.AdminShippingZoneByID)
-		ar.Delete("/api/admin/shipping/zones/{id}", adminHandler.AdminShippingZoneByID)
-		ar.Get("/api/admin/contact", adminHandler.Contact)
-		ar.Put("/api/admin/contact/{id}/read", adminHandler.MarkContactRead)
-		ar.Get("/api/admin/low-stock", adminHandler.LowStock)
+
+	r.Group(func(ur chi.Router) {
+		ur.Use(middleware.NoStore, adminCSRF, middleware.AdminSession(sessions))
+		ur.Post("/api/admin/upload", adminHandler.UploadImage)
+	})
+
+	r.Group(func(rr chi.Router) {
+		rr.Use(middleware.BodyLimit(2 << 20))
+
+		rr.Mount("/", health.Handler{Pool: pool, Started: time.Now(), Version: "1.0.0"}.Routes())
+		rr.Get("/api/homepage", adminHandler.PublicHomepage)
+		rr.Get("/api/settings", adminHandler.PublicSettings)
+		rr.With(apiLimiter.Middleware).Get("/api/products/search", productHandler.Search)
+		rr.Mount("/api/products", productHandler.Routes())
+		rr.With(apiLimiter.Middleware).Post("/api/cart/validate", orderHandler.ValidateCart)
+		rr.With(apiLimiter.Middleware).Post("/api/discount/validate", discount.Handler{Service: discountSvc}.Validate)
+		rr.Post("/api/orders", orderHandler.Create)
+		rr.Get("/api/orders/{external_reference}", orderHandler.Status)
+		rr.Post("/api/checkout/mercadopago/preference", paymentHandler.CreatePreference)
+		rr.Post("/api/payments/mercadopago/webhook", paymentHandler.Webhook)
+		rr.Get("/api/shipping/zones", shippingHandler.Zones)
+		rr.Post("/api/shipping/quote", shippingHandler.Quote)
+		rr.Post("/api/contact", contactHandler.Message)
+		rr.Post("/api/contact/abandoned-cart", contactHandler.AbandonedCart)
+
+		rr.With(middleware.NoStore, adminCSRF, loginLimiter.Middleware).Post("/api/admin/login", adminHandler.Login)
+		rr.With(middleware.NoStore, adminCSRF).Post("/api/admin/logout", adminHandler.Logout)
+		rr.Group(func(ar chi.Router) {
+			ar.Use(middleware.NoStore)
+			ar.Use(adminCSRF)
+			ar.Use(middleware.AdminSession(sessions))
+			ar.Get("/api/admin/me", adminHandler.Me)
+			ar.Post("/api/admin/password", adminHandler.ChangePassword)
+			ar.Get("/api/admin/users", adminHandler.AdminUsers)
+			ar.Post("/api/admin/users", adminHandler.AdminUsers)
+			ar.Post("/api/admin/users/{username}/password", adminHandler.AdminUserByUsername)
+			ar.Delete("/api/admin/users/{username}", adminHandler.AdminUserByUsername)
+			ar.Get("/api/admin/metrics", adminHandler.Metrics)
+			ar.Get("/api/admin/products", adminHandler.AdminProducts)
+			ar.Post("/api/admin/products", adminHandler.SaveProduct)
+			ar.Get("/api/admin/products/{id}", adminHandler.AdminProductByID)
+			ar.Put("/api/admin/products/{id}", adminHandler.SaveProduct)
+			ar.Put("/api/admin/products/{id}/active", adminHandler.UpdateProductActive)
+			ar.Delete("/api/admin/products/{id}", adminHandler.DeleteProduct)
+			ar.Post("/api/admin/products/import", adminHandler.ImportProducts)
+			ar.Get("/api/admin/orders", adminHandler.Orders)
+			ar.Get("/api/admin/orders/export", adminHandler.ExportOrders)
+			ar.Put("/api/admin/orders/{id}", adminHandler.UpdateOrder)
+			ar.Get("/api/admin/discounts", adminHandler.Discounts)
+			ar.Post("/api/admin/discounts", adminHandler.Discounts)
+			ar.Put("/api/admin/discounts/{id}", adminHandler.DiscountByID)
+			ar.Delete("/api/admin/discounts/{id}", adminHandler.DiscountByID)
+			ar.Get("/api/admin/homepage", adminHandler.Homepage)
+			ar.Put("/api/admin/homepage", adminHandler.Homepage)
+			ar.Get("/api/admin/settings", adminHandler.Settings)
+			ar.Put("/api/admin/settings", adminHandler.Settings)
+			ar.Get("/api/admin/shipping/zones", adminHandler.AdminShippingZones)
+			ar.Post("/api/admin/shipping/zones", adminHandler.AdminShippingZones)
+			ar.Put("/api/admin/shipping/zones/{id}", adminHandler.AdminShippingZoneByID)
+			ar.Delete("/api/admin/shipping/zones/{id}", adminHandler.AdminShippingZoneByID)
+			ar.Get("/api/admin/contact", adminHandler.Contact)
+			ar.Put("/api/admin/contact/{id}/read", adminHandler.MarkContactRead)
+			ar.Get("/api/admin/low-stock", adminHandler.LowStock)
+		})
 	})
 
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: r, ReadHeaderTimeout: 5 * time.Second}

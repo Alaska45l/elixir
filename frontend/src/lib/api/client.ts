@@ -130,27 +130,55 @@ export type ShippingQuoteOption = {
 
 export type ListResponse<T> = { items: T[]; total?: number; limit?: number; offset?: number; error?: string };
 
-export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typeof fetch = fetch): Promise<T> {
+async function responseError(res: Response): Promise<Error> {
+  const text = await res.text();
+  let message = '';
+  try {
+    const body = JSON.parse(text) as { error?: string };
+    message = body.error ?? '';
+  } catch {
+    message = text;
+  }
+  return new Error(message || 'No se pudo completar la operación');
+}
+
+function apiBase(path: string): string {
   const configuredBase = PUBLIC_API_URL.trim();
   const shouldUseSameOriginProxy = browser && path.startsWith('/api/');
-  const base = shouldUseSameOriginProxy || path.startsWith('/api/admin') ? '' : configuredBase;
-  const res = await fetcher(`${base}${path}`, {
+  return shouldUseSameOriginProxy || path.startsWith('/api/admin') ? '' : configuredBase;
+}
+
+export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typeof fetch = fetch): Promise<T> {
+  const res = await fetcher(`${apiBase(path)}${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
     ...init
   });
   if (!res.ok) {
-    const text = await res.text();
-    let message = '';
-    try {
-      const body = JSON.parse(text) as { error?: string };
-      message = body.error ?? '';
-    } catch {
-      message = text;
-    }
-    throw new Error(message || 'No se pudo completar la operación');
+    throw await responseError(res);
   }
   return (await res.json()) as T;
+}
+
+export async function uploadAdminImage(file: File, folder = 'products', fetcher: typeof fetch = fetch): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('folder', folder);
+
+  const path = '/api/admin/upload';
+  const res = await fetcher(`${apiBase(path)}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    body: form
+  });
+  if (!res.ok) {
+    throw await responseError(res);
+  }
+  const data = (await res.json()) as { url?: string };
+  if (!data.url) {
+    throw new Error('La subida no devolvió una URL');
+  }
+  return data.url;
 }
 
 export async function getProducts(fetcher: typeof fetch = fetch, query = ''): Promise<Product[]> {

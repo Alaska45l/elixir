@@ -28,3 +28,5 @@ curl http://localhost:8080/api/products/nocturno-oud
 - Start command: `./app`
 - Health check path: `/api/health`
 - Set all variables from `.env.example` in the Render dashboard.
+- Image uploads require Cloudflare R2 variables. `R2_PUBLIC_URL` should be the public bucket/custom-domain base URL, without a trailing slash.
+- WebP encoding uses CGO, so the build environment must have a C compiler available.

@@ -28,6 +28,11 @@ type Config struct {
 	AndreaniPassword  string
 	AndreaniClientID  string
 	OriginPostalCode  string
+	R2AccountID       string
+	R2AccessKey       string
+	R2SecretKey       string
+	R2BucketName      string
+	R2PublicURL       string
 }
 
 func Load() Config {
@@ -58,6 +63,11 @@ func Load() Config {
 		AndreaniPassword:  os.Getenv("ANDREANI_PASSWORD"),
 		AndreaniClientID:  os.Getenv("ANDREANI_CLIENT_ID"),
 		OriginPostalCode:  env("ORIGIN_POSTAL_CODE", "1000"),
+		R2AccountID:       os.Getenv("R2_ACCOUNT_ID"),
+		R2AccessKey:       os.Getenv("R2_ACCESS_KEY"),
+		R2SecretKey:       os.Getenv("R2_SECRET_KEY"),
+		R2BucketName:      os.Getenv("R2_BUCKET_NAME"),
+		R2PublicURL:       os.Getenv("R2_PUBLIC_URL"),
 	}
 }
 
