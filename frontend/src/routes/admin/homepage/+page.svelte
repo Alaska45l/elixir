@@ -1,22 +1,39 @@
 <script lang="ts">
-  import { apiFetch, defaultHomepage, uploadAdminImage } from '$lib/api/client';
+  import { apiFetch, uploadAdminImage } from '$lib/api/client';
   import type { HomepageSettings } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import { onMount } from 'svelte';
 
   type HomepageImageField = 'hero_image_url' | 'editorial_image_url';
 
-  let form: HomepageSettings = { ...defaultHomepage };
+  const blankHomepage = (): HomepageSettings => ({
+    hero_heading: '',
+    hero_subheading: '',
+    hero_image_url: '',
+    hero_image_mode: 'product_covers',
+    hero_rotation_interval_ms: 8000,
+    hero_cta_label: '',
+    hero_cta_url: '/fragrances',
+    editorial_heading: '',
+    editorial_body: '',
+    editorial_image_url: ''
+  });
+
+  let form: HomepageSettings = blankHomepage();
   let error = '';
+  let loading = true;
   let saving = false;
   let uploadingImageField: HomepageImageField | null = null;
 
   onMount(async () => {
     try {
       const res = await apiFetch<{items: HomepageSettings[]}>('/api/admin/homepage');
-      form = { ...defaultHomepage, ...(res.items[0] ?? {}) };
-    } catch {
-      form = { ...defaultHomepage };
+      form = { ...blankHomepage(), ...(res.items[0] ?? {}) };
+    } catch (err) {
+      form = blankHomepage();
+      error = err instanceof Error ? err.message : 'No se pudo cargar la homepage';
+    } finally {
+      loading = false;
     }
   });
 
@@ -65,6 +82,7 @@
 </div>
 
 <form class="form" on:submit|preventDefault={save}>
+  {#if loading}<p class="empty">Cargando homepage...</p>{/if}
   <section>
     <h2>Hero principal</h2>
     <label class="field"><span>Título principal</span><textarea class="textarea" bind:value={form.hero_heading}></textarea></label>
@@ -127,7 +145,7 @@
   </section>
 
   {#if error}<p class="error">{error}</p>{/if}
-  <button class="btn primary" disabled={saving || uploadingImageField !== null}>{saving ? 'Guardando...' : 'Guardar homepage'}</button>
+  <button class="btn primary" disabled={loading || saving || uploadingImageField !== null}>{saving ? 'Guardando...' : 'Guardar homepage'}</button>
 </form>
 
 <style>
@@ -135,7 +153,7 @@
   .form { display: grid; gap: 28px; max-width: 900px; }
   section { border-top: 1px solid var(--color-border); padding-top: 22px; display: grid; gap: 16px; }
   h2 { margin: 0; font-size: 1rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .12em; }
-  small { color: var(--color-text-muted); }
+  small, .empty { color: var(--color-text-muted); }
   .error { margin: 0; color: var(--color-danger-soft); }
   .preview { width: 320px; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--color-border); }
   .preview.wide { width: min(100%, 720px); aspect-ratio: 16/7; }

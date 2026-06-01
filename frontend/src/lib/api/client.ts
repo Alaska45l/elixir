@@ -157,7 +157,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typ
   if (!res.ok) {
     throw await responseError(res);
   }
-  return (await res.json()) as T;
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export async function uploadAdminImage(file: File, folder = 'products', fetcher: typeof fetch = fetch): Promise<string> {

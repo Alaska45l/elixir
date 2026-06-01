@@ -12,6 +12,7 @@
   let password = '';
   let resetPassword: Record<string, string> = {};
   let loading = true;
+  let deletingUsername = '';
   let error = '';
   let userError = '';
 
@@ -75,13 +76,17 @@
   }
 
   async function deleteUser(user: AdminUser) {
-    if (!confirm(`¿Eliminar el usuario ${user.username}?`)) return;
+    if (deletingUsername || !confirm(`¿Eliminar el usuario ${user.username}?`)) return;
+    deletingUsername = user.username;
+    userError = '';
     try {
       await apiFetch(`/api/admin/users/${encodeURIComponent(user.username)}`, { method: 'DELETE' });
       toast.push('Usuario eliminado');
       await loadUsers();
     } catch (err) {
       userError = err instanceof Error ? err.message : 'No se pudo eliminar el usuario';
+    } finally {
+      deletingUsername = '';
     }
   }
 
@@ -124,8 +129,8 @@
               <span>{user.last_login_at ? `Último ingreso: ${new Date(user.last_login_at).toLocaleString('es-AR')}` : 'Todavía no ingresó'}</span>
             </div>
             <label class="field"><span>Nueva contraseña</span><input class="input" type="password" minlength="10" bind:value={resetPassword[user.username]} /></label>
-            <button class="btn" type="button" on:click={() => resetUserPassword(user)}>Restablecer</button>
-            <button class="btn danger" type="button" on:click={() => deleteUser(user)}>Eliminar</button>
+            <button class="btn" type="button" disabled={Boolean(deletingUsername)} on:click={() => resetUserPassword(user)}>Restablecer</button>
+            <button class="btn danger" type="button" disabled={Boolean(deletingUsername)} on:click={() => deleteUser(user)}>{deletingUsername === user.username ? 'Eliminando...' : 'Eliminar'}</button>
           </article>
         {/each}
       </div>

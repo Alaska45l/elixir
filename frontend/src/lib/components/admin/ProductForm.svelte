@@ -20,6 +20,7 @@
     heart_notes: [],
     base_notes: [],
     featured: false,
+    active: true,
     display_order: 0,
     variants: [{ size_ml: 50, price_ars_cents: 8900000, stock: 10, sku: '', weight_grams: 200 }],
     images: [{ url: '', alt_text: '', is_primary: true, sort_order: 0 }]
@@ -27,6 +28,7 @@
 
   function prepare(value: ProductFormValue) {
     const next = structuredClone(value);
+    next.active = next.active ?? true;
     next.variants = next.variants.map((variant) => ({ ...variant, weight_grams: variant.weight_grams ?? 200 }));
     return next;
   }
@@ -35,14 +37,15 @@
   let notes = { top: '', heart: '', base: '' };
   let error = '';
   let saving = false;
+  let deleting = false;
   let loading = Boolean(id && !product);
   let uploadingImageIndex: number | null = null;
 
   onMount(async () => {
     if (!id || product) return;
     try {
-      const data = await apiFetch<{ product: ProductFormValue }>(`/api/admin/products/${id}`);
-      form = prepare(data.product);
+      const data = await apiFetch<{ active?: boolean; product: ProductFormValue }>(`/api/admin/products/${id}`);
+      form = prepare({ ...data.product, active: data.product.active ?? data.active ?? true });
     } catch (err) {
       error = err instanceof Error ? err.message : 'No se pudo cargar el producto';
     } finally {
@@ -133,12 +136,16 @@
   }
   async function deleteProduct() {
     if (!id || !confirm('¿Eliminar este producto?')) return;
+    deleting = true;
+    error = '';
     try {
       await apiFetch(`/api/admin/products/${id}`, { method: 'DELETE' });
       toast.push('Producto eliminado');
       location.href = '/admin/productos';
     } catch (err) {
       error = err instanceof Error ? err.message : 'No se pudo eliminar el producto';
+    } finally {
+      deleting = false;
     }
   }
 </script>
@@ -159,7 +166,10 @@
     <label class="field"><span>Concentración</span><select class="select" bind:value={form.concentration}><option>Extrait de Parfum</option><option>EDP</option><option>EDT</option><option>EDC</option></select></label>
     <label class="field"><span>Orden de aparición</span><input class="input" type="number" bind:value={form.display_order} /></label>
   </div>
-  <label class="check"><input type="checkbox" bind:checked={form.featured} /> Fragancia destacada</label>
+  <div class="checks">
+    <label class="check"><input type="checkbox" bind:checked={form.featured} /> Fragancia destacada</label>
+    <label class="check"><input type="checkbox" bind:checked={form.active} /> Publicada en la tienda</label>
+  </div>
 
   <section class="panel">
     <h2>Notas olfativas</h2>
@@ -207,8 +217,8 @@
 
   <div class="actions">
     {#if error}<p class="error">{error}</p>{/if}
-    <button class="btn primary" type="submit" disabled={saving || uploadingImageIndex !== null}>{saving ? 'Guardando...' : 'Guardar producto'}</button>
-    {#if id}<button class="btn danger" type="button" on:click={deleteProduct}>Eliminar</button>{/if}
+    <button class="btn primary" type="submit" disabled={saving || deleting || uploadingImageIndex !== null}>{saving ? 'Guardando...' : 'Guardar producto'}</button>
+    {#if id}<button class="btn danger" type="button" disabled={saving || deleting} on:click={deleteProduct}>{deleting ? 'Eliminando...' : 'Eliminar'}</button>{/if}
   </div>
 </form>
 {/if}
@@ -217,6 +227,7 @@
   .form { display: grid; gap: 22px; max-width: 980px; }
   .panel { border-top: 1px solid var(--color-border); padding-top: 22px; display: grid; gap: 14px; }
   h2 { margin: 0; font-size: 1rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .12em; }
+  .checks { display: flex; flex-wrap: wrap; gap: 16px; }
   .check { color: var(--color-text-muted); display: flex; gap: 10px; }
   .tags { display: flex; flex-wrap: wrap; gap: 8px; }
   .tags button, .variant-row button, .image-row button { border: 1px solid var(--color-border); color: var(--color-text); background: transparent; min-height: 36px; }

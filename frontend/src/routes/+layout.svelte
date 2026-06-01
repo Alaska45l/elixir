@@ -11,7 +11,7 @@
   import type { LayoutData } from './$types';
   export let data: LayoutData;
   let cartOpen = false;
-  $: isAdmin = $page.url.pathname.startsWith('/admin');
+  $: isAdmin = data.isAdmin || $page.url.pathname.startsWith('/admin');
   $: siteUrl = (PUBLIC_SITE_URL || 'http://localhost:5173').replace(/\/$/, '');
 </script>
 
@@ -23,7 +23,7 @@
 {#if !isAdmin}<Header settings={data.settings} onCart={() => cartOpen = true} />{/if}
 <div class:fading={$navigating}><slot /></div>
 {#if !isAdmin}<Footer settings={data.settings} />{/if}
-<CartDrawer open={cartOpen} onClose={() => cartOpen = false} />
+{#if !isAdmin}<CartDrawer open={cartOpen} onClose={() => cartOpen = false} />{/if}
 {#if !isAdmin}<ScrollTop />{/if}
 <Toast />
 

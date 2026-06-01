@@ -82,11 +82,20 @@ func (h Handler) AdminProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := h.Pool.Query(r.Context(), `
+		WITH variant_stats AS (
+			SELECT product_id,
+				MIN(price_ars_cents) FILTER (WHERE active=true) AS min_price_ars_cents,
+				SUM(stock) FILTER (WHERE active=true) AS total_stock,
+				COUNT(*) FILTER (WHERE active=true) AS variant_count
+			FROM product_variants
+			GROUP BY product_id
+		)
 		SELECT p.id, p.slug, p.name, COALESCE(p.tagline,''), p.featured, p.active, p.display_order,
-			COALESCE((SELECT MIN(price_ars_cents) FROM product_variants v WHERE v.product_id=p.id AND v.active=true), 0),
-			COALESCE((SELECT SUM(stock) FROM product_variants v WHERE v.product_id=p.id AND v.active=true), 0),
-			COALESCE((SELECT COUNT(*) FROM product_variants v WHERE v.product_id=p.id AND v.active=true), 0)
+			COALESCE(vs.min_price_ars_cents, 0),
+			COALESCE(vs.total_stock, 0),
+			COALESCE(vs.variant_count, 0)
 		FROM products p
+		LEFT JOIN variant_stats vs ON vs.product_id=p.id
 		ORDER BY p.display_order ASC, p.created_at DESC
 		LIMIT 200`)
 	if err != nil {
@@ -100,9 +109,15 @@ func (h Handler) AdminProducts(w http.ResponseWriter, r *http.Request) {
 		var featured, active bool
 		var order, totalStock, variantCount int
 		var minPrice int64
-		if rows.Scan(&id, &slug, &name, &tagline, &featured, &active, &order, &minPrice, &totalStock, &variantCount) == nil {
-			items = append(items, map[string]any{"id": id, "slug": slug, "name": name, "tagline": tagline, "featured": featured, "active": active, "display_order": order, "min_price_ars_cents": minPrice, "total_stock": totalStock, "variant_count": variantCount})
+		if err := rows.Scan(&id, &slug, &name, &tagline, &featured, &active, &order, &minPrice, &totalStock, &variantCount); err != nil {
+			httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron leer productos")
+			return
 		}
+		items = append(items, map[string]any{"id": id, "slug": slug, "name": name, "tagline": tagline, "featured": featured, "active": active, "display_order": order, "min_price_ars_cents": minPrice, "total_stock": totalStock, "variant_count": variantCount})
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron leer productos")
+		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 }
@@ -121,25 +136,42 @@ func (h Handler) AdminProductByID(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusNotFound, "producto no encontrado")
 		return
 	}
+	item.Active = &active
 	rows, err := h.Pool.Query(r.Context(), `SELECT size_ml, price_ars_cents, stock, COALESCE(sku,''), weight_grams FROM product_variants WHERE product_id=$1 AND active=true ORDER BY size_ml`, id)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var v variantForm
-			if rows.Scan(&v.SizeML, &v.PriceARSCents, &v.Stock, &v.SKU, &v.WeightGrams) == nil {
-				item.Variants = append(item.Variants, v)
-			}
+	if err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron consultar variantes")
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var v variantForm
+		if err := rows.Scan(&v.SizeML, &v.PriceARSCents, &v.Stock, &v.SKU, &v.WeightGrams); err != nil {
+			httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron leer variantes")
+			return
 		}
+		item.Variants = append(item.Variants, v)
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron leer variantes")
+		return
 	}
 	imgRows, err := h.Pool.Query(r.Context(), `SELECT url, COALESCE(alt_text,''), is_primary, sort_order FROM product_images WHERE product_id=$1 ORDER BY sort_order`, id)
-	if err == nil {
-		defer imgRows.Close()
-		for imgRows.Next() {
-			var img imageForm
-			if imgRows.Scan(&img.URL, &img.AltText, &img.IsPrimary, &img.SortOrder) == nil {
-				item.Images = append(item.Images, img)
-			}
+	if err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron consultar imágenes")
+		return
+	}
+	defer imgRows.Close()
+	for imgRows.Next() {
+		var img imageForm
+		if err := imgRows.Scan(&img.URL, &img.AltText, &img.IsPrimary, &img.SortOrder); err != nil {
+			httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron leer imágenes")
+			return
 		}
+		item.Images = append(item.Images, img)
+	}
+	if err := imgRows.Err(); err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron leer imágenes")
+		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"id": id, "active": active, "product": item})
 }
@@ -168,16 +200,26 @@ func (h Handler) SaveProduct(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 	if id == "" {
 		action = "product.create"
-		err = tx.QueryRow(r.Context(), `INSERT INTO products (slug,name,tagline,description,scent_family,gender_tag,concentration,top_notes,heart_notes,base_notes,featured,display_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
-			req.Slug, req.Name, req.Tagline, req.Description, req.ScentFamily, req.GenderTag, req.Concentration, req.TopNotes, req.HeartNotes, req.BaseNotes, req.Featured, req.DisplayOrder).Scan(&id)
+		err = tx.QueryRow(r.Context(), `INSERT INTO products (slug,name,tagline,description,scent_family,gender_tag,concentration,top_notes,heart_notes,base_notes,featured,active,display_order) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+			req.Slug, req.Name, req.Tagline, req.Description, req.ScentFamily, req.GenderTag, req.Concentration, req.TopNotes, req.HeartNotes, req.BaseNotes, req.Featured, req.activeOrDefault(true), req.DisplayOrder).Scan(&id)
 		if err != nil {
 			httpx.Error(w, r, http.StatusBadRequest, "no se pudo crear el producto")
 			return
 		}
 	} else {
-		_, err = tx.Exec(r.Context(), `UPDATE products SET slug=$1,name=$2,tagline=$3,description=$4,scent_family=$5,gender_tag=$6,concentration=$7,top_notes=$8,heart_notes=$9,base_notes=$10,featured=$11,display_order=$12,updated_at=now() WHERE id=$13`,
-			req.Slug, req.Name, req.Tagline, req.Description, req.ScentFamily, req.GenderTag, req.Concentration, req.TopNotes, req.HeartNotes, req.BaseNotes, req.Featured, req.DisplayOrder, id)
-		if err != nil {
+		var rowsAffected int64
+		if req.Active == nil {
+			tag, execErr := tx.Exec(r.Context(), `UPDATE products SET slug=$1,name=$2,tagline=$3,description=$4,scent_family=$5,gender_tag=$6,concentration=$7,top_notes=$8,heart_notes=$9,base_notes=$10,featured=$11,display_order=$12,updated_at=now() WHERE id=$13`,
+				req.Slug, req.Name, req.Tagline, req.Description, req.ScentFamily, req.GenderTag, req.Concentration, req.TopNotes, req.HeartNotes, req.BaseNotes, req.Featured, req.DisplayOrder, id)
+			err = execErr
+			rowsAffected = tag.RowsAffected()
+		} else {
+			tag, execErr := tx.Exec(r.Context(), `UPDATE products SET slug=$1,name=$2,tagline=$3,description=$4,scent_family=$5,gender_tag=$6,concentration=$7,top_notes=$8,heart_notes=$9,base_notes=$10,featured=$11,active=$12,display_order=$13,updated_at=now() WHERE id=$14`,
+				req.Slug, req.Name, req.Tagline, req.Description, req.ScentFamily, req.GenderTag, req.Concentration, req.TopNotes, req.HeartNotes, req.BaseNotes, req.Featured, *req.Active, req.DisplayOrder, id)
+			err = execErr
+			rowsAffected = tag.RowsAffected()
+		}
+		if err != nil || rowsAffected == 0 {
 			httpx.Error(w, r, http.StatusBadRequest, "no se pudo actualizar el producto")
 			return
 		}
@@ -203,8 +245,8 @@ func (h Handler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
 		return
 	}
-	_, err := h.Pool.Exec(r.Context(), `UPDATE products SET active=false, updated_at=now() WHERE id=$1`, chi.URLParam(r, "id"))
-	if err != nil {
+	tag, err := h.Pool.Exec(r.Context(), `UPDATE products SET active=false, updated_at=now() WHERE id=$1`, chi.URLParam(r, "id"))
+	if err != nil || tag.RowsAffected() == 0 {
 		httpx.Error(w, r, http.StatusBadRequest, "no se pudo eliminar")
 		return
 	}
@@ -224,8 +266,8 @@ func (h Handler) UpdateProductActive(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusBadRequest, "cuerpo inválido")
 		return
 	}
-	_, err := h.Pool.Exec(r.Context(), `UPDATE products SET active=$1, updated_at=now() WHERE id=$2`, req.Active, chi.URLParam(r, "id"))
-	if err != nil {
+	tag, err := h.Pool.Exec(r.Context(), `UPDATE products SET active=$1, updated_at=now() WHERE id=$2`, req.Active, chi.URLParam(r, "id"))
+	if err != nil || tag.RowsAffected() == 0 {
 		httpx.Error(w, r, http.StatusBadRequest, "no se pudo actualizar")
 		return
 	}
@@ -680,7 +722,28 @@ func (h Handler) Contact(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) MarkContactRead(w http.ResponseWriter, r *http.Request) {
-	_, _ = h.Pool.Exec(r.Context(), `UPDATE contact_messages SET read=true WHERE id=$1`, chi.URLParam(r, "id"))
+	if h.Pool == nil {
+		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
+		return
+	}
+	read := true
+	if r.ContentLength != 0 {
+		var req struct {
+			Read *bool `json:"read"`
+		}
+		if err := httpx.DecodeStrict(r, &req); err != nil {
+			httpx.Error(w, r, http.StatusBadRequest, "cuerpo inválido")
+			return
+		}
+		if req.Read != nil {
+			read = *req.Read
+		}
+	}
+	tag, err := h.Pool.Exec(r.Context(), `UPDATE contact_messages SET read=$1 WHERE id=$2`, read, chi.URLParam(r, "id"))
+	if err != nil || tag.RowsAffected() == 0 {
+		httpx.Error(w, r, http.StatusBadRequest, "no se pudo actualizar el mensaje")
+		return
+	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -690,7 +753,7 @@ func (h Handler) LowStock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	threshold := h.lowStockThreshold(r)
-	rows, err := h.Pool.Query(r.Context(), `SELECT v.id, p.id AS product_id, p.name, v.size_ml, v.stock FROM product_variants v JOIN products p ON p.id=v.product_id WHERE v.stock <= $1 AND v.active=true AND p.active=true ORDER BY v.stock ASC, p.name ASC`, threshold)
+	rows, err := h.Pool.Query(r.Context(), `SELECT v.id, p.id AS product_id, p.name, v.size_ml, v.stock FROM product_variants v JOIN products p ON p.id=v.product_id WHERE v.stock <= $1 AND v.active=true AND p.active=true ORDER BY v.stock ASC, p.name ASC LIMIT 200`, threshold)
 	if err != nil {
 		httpx.Error(w, r, http.StatusInternalServerError, "no se pudo consultar")
 		return
@@ -700,9 +763,15 @@ func (h Handler) LowStock(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var id, productID, name string
 		var size, stock int
-		if rows.Scan(&id, &productID, &name, &size, &stock) == nil {
-			items = append(items, map[string]any{"id": id, "product_id": productID, "name": name, "size_ml": size, "stock": stock})
+		if err := rows.Scan(&id, &productID, &name, &size, &stock); err != nil {
+			httpx.Error(w, r, http.StatusInternalServerError, "no se pudo leer stock")
+			return
 		}
+		items = append(items, map[string]any{"id": id, "product_id": productID, "name": name, "size_ml": size, "stock": stock})
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudo leer stock")
+		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items, "threshold": threshold})
 }
@@ -738,6 +807,10 @@ func (h Handler) listTable(w http.ResponseWriter, r *http.Request, query string)
 			item[string(f.Name)] = values[i]
 		}
 		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudo leer la consulta")
+		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 }
@@ -865,9 +938,17 @@ type productPayload struct {
 	HeartNotes    []string      `json:"heart_notes"`
 	BaseNotes     []string      `json:"base_notes"`
 	Featured      bool          `json:"featured"`
+	Active        *bool         `json:"active,omitempty"`
 	DisplayOrder  int           `json:"display_order"`
 	Variants      []variantForm `json:"variants"`
 	Images        []imageForm   `json:"images"`
+}
+
+func (p productPayload) activeOrDefault(defaultValue bool) bool {
+	if p.Active == nil {
+		return defaultValue
+	}
+	return *p.Active
 }
 
 type variantForm struct {
