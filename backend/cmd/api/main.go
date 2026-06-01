@@ -29,7 +29,8 @@ func main() {
 	cfg := config.Load()
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	if err := cfg.Validate(); err != nil {
-		log.Fatal(err)
+		slog.Error("config validation failed", "error", err)
+		os.Exit(1)
 	}
 	pool, err := db.Connect(context.Background(), cfg.DatabaseURL)
 	if err != nil {

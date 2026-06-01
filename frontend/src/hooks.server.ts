@@ -9,7 +9,7 @@ const csp = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' https://fonts.gstatic.com data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "script-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
   "connect-src 'self'",
   "form-action 'self'",
   "frame-src 'self' https://www.mercadopago.com https://*.mercadopago.com",
