@@ -5,7 +5,12 @@
   export let data: PageData;
 </script>
 
-<svelte:head><title>Envíos | ELIXIR Exclusive</title></svelte:head>
+<svelte:head>
+  <title>Envíos | ELIXIR Exclusive</title>
+  <meta name="description" content="Información de envíos de ELIXIR Exclusive para CABA, Buenos Aires e Interior." />
+  <meta property="og:title" content="Envíos | ELIXIR Exclusive" />
+  <meta property="og:description" content="Zonas, tiempos estimados y opciones de despacho disponibles." />
+</svelte:head>
 <section class="container page-pad">
   <p class="eyebrow">Envíos</p>
   <h1 class="display section-title">Envíos a todo el país</h1>

@@ -11,6 +11,7 @@ import (
 )
 
 const SessionCookie = "elixir_admin_session"
+const SessionCookiePath = "/"
 
 type SessionManager struct {
 	Secret   string
@@ -48,13 +49,13 @@ func (s SessionManager) Validate(token string, now time.Time) (string, bool) {
 
 func (s SessionManager) SetCookie(w http.ResponseWriter, username string) {
 	http.SetCookie(w, &http.Cookie{
-		Name: SessionCookie, Value: s.Create(username, time.Now()), Path: "/",
+		Name: SessionCookie, Value: s.Create(username, time.Now()), Path: SessionCookiePath,
 		HttpOnly: true, Secure: s.Secure, SameSite: s.sameSite(), MaxAge: int(s.Duration.Seconds()),
 	})
 }
 
 func (s SessionManager) ClearCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: "", Path: "/", HttpOnly: true, Secure: s.Secure, SameSite: s.sameSite(), MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: "", Path: SessionCookiePath, HttpOnly: true, Secure: s.Secure, SameSite: s.sameSite(), MaxAge: -1})
 }
 
 func (s SessionManager) Username(r *http.Request) (string, error) {

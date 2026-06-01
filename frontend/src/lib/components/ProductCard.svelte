@@ -14,8 +14,8 @@
 
 <article class={`product variant-${variant} reveal-delay-${(index % 3) + 1}`} use:reveal>
   <a class="card-link" href={`/fragrances/${product.slug}`}>
-    <img class="primary" src={primary} alt={product.images[0]?.alt_text ?? product.name} loading="lazy" />
-    <img class="secondary" src={secondary} alt="" loading="lazy" />
+    <img class="primary" src={primary} alt={product.images[0]?.alt_text ?? product.name} loading="lazy" width="640" height="800" />
+    <img class="secondary" src={secondary} alt="" loading="lazy" width="640" height="800" />
 
     <div class="card-overlay">
       <div class="card-badges">

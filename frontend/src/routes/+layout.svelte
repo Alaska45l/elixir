@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { PUBLIC_SITE_URL } from '$env/static/public';
   import '../app.css';
   import AnnouncementBar from '$lib/components/AnnouncementBar.svelte';
   import Header from '$lib/components/Header.svelte';
@@ -12,7 +11,7 @@
   export let data: LayoutData;
   let cartOpen = false;
   $: isAdmin = data.isAdmin || $page.url.pathname.startsWith('/admin');
-  $: siteUrl = (PUBLIC_SITE_URL || 'http://localhost:5173').replace(/\/$/, '');
+  $: siteUrl = data.siteUrl.replace(/\/$/, '');
 </script>
 
 <svelte:head>

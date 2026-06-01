@@ -8,18 +8,18 @@ import (
 func CORS(origins []string) func(http.Handler) http.Handler {
 	allowed := map[string]bool{}
 	for _, origin := range origins {
-		allowed[strings.TrimSpace(origin)] = true
+		origin = strings.TrimRight(strings.TrimSpace(origin), "/")
+		if origin != "" && origin != "*" {
+			allowed[origin] = true
+		}
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := r.Header.Get("Origin")
+			origin := strings.TrimRight(strings.TrimSpace(r.Header.Get("Origin")), "/")
 			if allowed[origin] {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
-				w.Header().Set("Vary", "Origin")
-			} else if allowed["*"] {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Vary", "Origin")
+				w.Header().Add("Vary", "Origin")
 			}
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Request-ID")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")

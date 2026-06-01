@@ -8,9 +8,15 @@
   let products: Product[] = [];
 
   onMount(async () => {
-    const slugs = (JSON.parse(localStorage.getItem('elixir_recent') ?? '[]') as string[])
-      .filter((slug) => slug !== currentSlug)
-      .slice(0, 6);
+    let slugs: string[] = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem('elixir_recent') ?? '[]') as unknown;
+      slugs = Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === 'string' && item !== currentSlug).slice(0, 6)
+        : [];
+    } catch {
+      slugs = [];
+    }
     const loaded = await Promise.all(slugs.map((slug) => getProduct(slug)));
     products = loaded.filter((item): item is Product => item !== null);
   });

@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -32,16 +33,27 @@ func (h Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Username = strings.TrimSpace(req.Username)
-	ok, err := h.Auth.Login(r.Context(), r.RemoteAddr, req.Username, req.Password)
+	clientAddr := requestClientIP(r)
+	if err := validateLoginPayload(req.Username, req.Password); err != nil {
+		if h.Auth.Limiter != nil {
+			h.Auth.Limiter.RegisterFailure(clientAddr)
+		}
+		audit.Log(r.Context(), h.Pool, audit.Event{ActorUsername: auditActor(req.Username), Action: "admin.login.failure", Metadata: map[string]any{"reason": "invalid_payload", "ip": clientAddr}})
+		httpx.Error(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+	ok, err := h.Auth.Login(r.Context(), clientAddr, req.Username, req.Password)
 	if err != nil {
 		httpx.Error(w, r, http.StatusInternalServerError, "no se pudo iniciar sesión")
 		return
 	}
 	if !ok {
+		audit.Log(r.Context(), h.Pool, audit.Event{ActorUsername: auditActor(req.Username), Action: "admin.login.failure", Metadata: map[string]any{"reason": "credentials", "ip": clientAddr}})
 		httpx.Error(w, r, http.StatusUnauthorized, "credenciales inválidas")
 		return
 	}
 	h.Sessions.SetCookie(w, req.Username)
+	audit.Log(r.Context(), h.Pool, audit.Event{ActorUsername: req.Username, Action: "admin.login.success", Metadata: map[string]any{"ip": clientAddr}})
 	httpx.WriteJSON(w, http.StatusOK, meResponse{Username: req.Username})
 }
 
@@ -67,11 +79,26 @@ func (h Handler) Metrics(w http.ResponseWriter, r *http.Request) {
 	var totalProducts, totalOrders, pendingOrders, lowStockCount int
 	var revenue int64
 	threshold := h.lowStockThreshold(r)
-	_ = h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM products WHERE active=true`).Scan(&totalProducts)
-	_ = h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM orders`).Scan(&totalOrders)
-	_ = h.Pool.QueryRow(r.Context(), `SELECT COALESCE(SUM(total_ars_cents),0) FROM orders WHERE status='paid'`).Scan(&revenue)
-	_ = h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM orders WHERE status='pending'`).Scan(&pendingOrders)
-	_ = h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM product_variants v JOIN products p ON p.id=v.product_id WHERE v.stock <= $1 AND v.active=true AND p.active=true`, threshold).Scan(&lowStockCount)
+	if err := h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM products WHERE active=true`).Scan(&totalProducts); err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron calcular métricas")
+		return
+	}
+	if err := h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM orders`).Scan(&totalOrders); err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron calcular métricas")
+		return
+	}
+	if err := h.Pool.QueryRow(r.Context(), `SELECT COALESCE(SUM(total_ars_cents),0) FROM orders WHERE status='paid'`).Scan(&revenue); err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron calcular métricas")
+		return
+	}
+	if err := h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM orders WHERE status='pending'`).Scan(&pendingOrders); err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron calcular métricas")
+		return
+	}
+	if err := h.Pool.QueryRow(r.Context(), `SELECT COUNT(*) FROM product_variants v JOIN products p ON p.id=v.product_id WHERE v.stock <= $1 AND v.active=true AND p.active=true`, threshold).Scan(&lowStockCount); err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron calcular métricas")
+		return
+	}
 	recent := h.recentOrders(r)
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"total_products": totalProducts, "total_orders": totalOrders, "paid_revenue_cents": revenue, "pending_orders": pendingOrders, "low_stock_count": lowStockCount, "recent_orders": recent})
 }
@@ -81,6 +108,7 @@ func (h Handler) AdminProducts(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": []any{}})
 		return
 	}
+	limit, offset := pagination(r, 100, 200)
 	rows, err := h.Pool.Query(r.Context(), `
 		WITH variant_stats AS (
 			SELECT product_id,
@@ -97,7 +125,7 @@ func (h Handler) AdminProducts(w http.ResponseWriter, r *http.Request) {
 		FROM products p
 		LEFT JOIN variant_stats vs ON vs.product_id=p.id
 		ORDER BY p.display_order ASC, p.created_at DESC
-		LIMIT 200`)
+		LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
 		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron listar productos")
 		return
@@ -119,7 +147,7 @@ func (h Handler) AdminProducts(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron leer productos")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items, "limit": limit, "offset": offset})
 }
 
 func (h Handler) AdminProductByID(w http.ResponseWriter, r *http.Request) {
@@ -414,7 +442,13 @@ func (h Handler) ImportProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) Orders(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": h.orders(r, 100)})
+	limit, offset := pagination(r, 100, 200)
+	items, err := h.orders(r, limit, offset)
+	if err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron listar órdenes")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items, "limit": limit, "offset": offset})
 }
 
 func (h Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
@@ -443,6 +477,15 @@ func (h Handler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		now := time.Now()
 		req.ShippedAt = &now
 	}
+	var currentStatus string
+	if err := h.Pool.QueryRow(r.Context(), `SELECT status FROM orders WHERE id=$1`, chi.URLParam(r, "id")).Scan(&currentStatus); err != nil {
+		httpx.Error(w, r, http.StatusBadRequest, "orden no encontrada")
+		return
+	}
+	if !validOrderTransition(currentStatus, req.Status) {
+		httpx.Error(w, r, http.StatusBadRequest, "transición de estado inválida")
+		return
+	}
 	tag, err := h.Pool.Exec(r.Context(), `
 		UPDATE orders
 		SET status=$1, tracking_number=$2, shipping_carrier=$3, shipped_at=$4, internal_notes=$5, updated_at=now()
@@ -461,11 +504,6 @@ func (h Handler) ExportOrders(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusServiceUnavailable, "base de datos no configurada")
 		return
 	}
-	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", `attachment; filename="orders-`+time.Now().Format("2006-01-02")+`.csv"`)
-	writer := csv.NewWriter(w)
-	defer writer.Flush()
-	_ = writer.Write([]string{"external_reference", "status", "customer_name", "customer_email", "customer_phone", "subtotal_ars_cents", "shipping_cost_ars_cents", "discount_ars_cents", "total_ars_cents", "payment_status", "tracking_number", "shipping_carrier", "created_at"})
 	rows, err := h.Pool.Query(r.Context(), `
 		SELECT o.external_reference, o.status, o.customer_name, o.customer_email, COALESCE(o.customer_phone,''),
 			o.subtotal_ars_cents, o.shipping_cost_ars_cents, o.discount_ars_cents, o.total_ars_cents,
@@ -476,16 +514,33 @@ func (h Handler) ExportOrders(w http.ResponseWriter, r *http.Request) {
 		) pe ON true
 		ORDER BY o.created_at DESC`)
 	if err != nil {
+		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron exportar órdenes")
 		return
 	}
 	defer rows.Close()
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", `attachment; filename="orders-`+time.Now().Format("2006-01-02")+`.csv"`)
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+	if err := writer.Write([]string{"external_reference", "status", "customer_name", "customer_email", "customer_phone", "subtotal_ars_cents", "shipping_cost_ars_cents", "discount_ars_cents", "total_ars_cents", "payment_status", "tracking_number", "shipping_carrier", "created_at"}); err != nil {
+		slog.Error("orders export write failed", "error", err)
+		return
+	}
 	for rows.Next() {
 		var ref, status, name, email, phone, paymentStatus, tracking, carrier string
 		var subtotal, shipping, discount, total int64
 		var created time.Time
-		if rows.Scan(&ref, &status, &name, &email, &phone, &subtotal, &shipping, &discount, &total, &paymentStatus, &tracking, &carrier, &created) == nil {
-			_ = writer.Write([]string{ref, status, name, email, phone, strconv.FormatInt(subtotal, 10), strconv.FormatInt(shipping, 10), strconv.FormatInt(discount, 10), strconv.FormatInt(total, 10), paymentStatus, tracking, carrier, created.Format(time.RFC3339)})
+		if err := rows.Scan(&ref, &status, &name, &email, &phone, &subtotal, &shipping, &discount, &total, &paymentStatus, &tracking, &carrier, &created); err != nil {
+			slog.Error("orders export scan failed", "error", err)
+			return
 		}
+		if err := writer.Write([]string{ref, status, name, email, phone, strconv.FormatInt(subtotal, 10), strconv.FormatInt(shipping, 10), strconv.FormatInt(discount, 10), strconv.FormatInt(total, 10), paymentStatus, tracking, carrier, created.Format(time.RFC3339)}); err != nil {
+			slog.Error("orders export write failed", "error", err)
+			return
+		}
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("orders export rows failed", "error", err)
 	}
 }
 
@@ -591,6 +646,7 @@ func (h Handler) Homepage(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) PublicHomepage(w http.ResponseWriter, r *http.Request) {
 	if h.Pool == nil {
+		w.Header().Set("Cache-Control", "public, max-age=60, stale-while-revalidate=300")
 		httpx.WriteJSON(w, http.StatusOK, homepageRequest{})
 		return
 	}
@@ -598,9 +654,11 @@ func (h Handler) PublicHomepage(w http.ResponseWriter, r *http.Request) {
 	err := h.Pool.QueryRow(r.Context(), `SELECT COALESCE(hero_heading,''), COALESCE(hero_subheading,''), COALESCE(hero_image_url,''), COALESCE(hero_image_mode,'product_covers'), COALESCE(hero_rotation_interval_ms,8000), COALESCE(hero_cta_label,''), COALESCE(hero_cta_url,''), COALESCE(editorial_heading,''), COALESCE(editorial_body,''), COALESCE(editorial_image_url,'') FROM homepage_settings WHERE id=1`).
 		Scan(&item.HeroHeading, &item.HeroSubheading, &item.HeroImageURL, &item.HeroImageMode, &item.HeroRotationIntervalMS, &item.HeroCTALabel, &item.HeroCTAURL, &item.EditorialHeading, &item.EditorialBody, &item.EditorialImageURL)
 	if err != nil {
+		w.Header().Set("Cache-Control", "public, max-age=60, stale-while-revalidate=300")
 		httpx.WriteJSON(w, http.StatusOK, homepageRequest{})
 		return
 	}
+	w.Header().Set("Cache-Control", "public, max-age=60, stale-while-revalidate=300")
 	httpx.WriteJSON(w, http.StatusOK, item)
 }
 
@@ -627,9 +685,17 @@ func (h Handler) Settings(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
-	faqJSON, _ := json.Marshal(req.FAQItems)
-	navJSON, _ := json.Marshal(req.NavbarProductCategories)
-	_, err := h.Pool.Exec(r.Context(), `
+	faqJSON, err := json.Marshal(req.FAQItems)
+	if err != nil {
+		httpx.Error(w, r, http.StatusBadRequest, "configuración inválida")
+		return
+	}
+	navJSON, err := json.Marshal(req.NavbarProductCategories)
+	if err != nil {
+		httpx.Error(w, r, http.StatusBadRequest, "configuración inválida")
+		return
+	}
+	_, err = h.Pool.Exec(r.Context(), `
 	INSERT INTO site_settings (
 		id, footer_instagram_url, footer_tiktok_url, footer_whatsapp_url,
 		announcement_bar_text, announcement_bar_active,
@@ -800,7 +866,11 @@ func (h Handler) listTable(w http.ResponseWriter, r *http.Request, query string)
 	defer rows.Close()
 	items := []map[string]any{}
 	for rows.Next() {
-		values, _ := rows.Values()
+		values, err := rows.Values()
+		if err != nil {
+			httpx.Error(w, r, http.StatusInternalServerError, "no se pudo leer la consulta")
+			return
+		}
 		fields := rows.FieldDescriptions()
 		item := map[string]any{}
 		for i, f := range fields {
@@ -816,13 +886,17 @@ func (h Handler) listTable(w http.ResponseWriter, r *http.Request, query string)
 }
 
 func (h Handler) recentOrders(r *http.Request) []map[string]any {
-	items := h.orders(r, 10)
+	items, err := h.orders(r, 10, 0)
+	if err != nil {
+		slog.Error("recent orders failed", "error", err)
+		return []map[string]any{}
+	}
 	return items
 }
 
-func (h Handler) orders(r *http.Request, limit int) []map[string]any {
+func (h Handler) orders(r *http.Request, limit, offset int) ([]map[string]any, error) {
 	if h.Pool == nil {
-		return []map[string]any{}
+		return []map[string]any{}, nil
 	}
 	rows, err := h.Pool.Query(r.Context(), `
 		SELECT o.id, o.external_reference, o.status, o.customer_name, o.customer_email, COALESCE(o.customer_phone,''),
@@ -839,9 +913,9 @@ func (h Handler) orders(r *http.Request, limit int) []map[string]any {
 			LIMIT 1
 		) pe ON true
 		ORDER BY o.created_at DESC
-		LIMIT $1`, limit)
+		LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
-		return []map[string]any{}
+		return nil, err
 	}
 	defer rows.Close()
 	items := []map[string]any{}
@@ -854,76 +928,68 @@ func (h Handler) orders(r *http.Request, limit int) []map[string]any {
 		var paymentID, preferenceID, paymentStatus, paymentDetail sql.NullString
 		var paymentProcessed sql.NullTime
 		var shippingCost, subtotal, total, discount int64
-		if rows.Scan(&id, &ref, &status, &name, &email, &phone, &shipping, &shippingCost, &subtotal, &total, &discountCode, &discount, &currency, &tracking, &carrier, &shippedAt, &internalNotes, &created, &paymentID, &preferenceID, &paymentStatus, &paymentDetail, &paymentProcessed) == nil {
-			var address map[string]any
-			_ = json.Unmarshal(shipping, &address)
-			orderIDs = append(orderIDs, id)
-			item := map[string]any{
-				"id": id, "external_reference": ref, "status": status,
-				"customer_name": name, "customer_email": email, "customer_phone": phone,
-				"shipping_address": address, "shipping_cost_ars_cents": shippingCost,
-				"subtotal_ars_cents": subtotal, "total_ars_cents": total, "discount_code": discountCode,
-				"discount_ars_cents": discount, "currency": currency, "tracking_number": tracking,
-				"shipping_carrier": carrier, "internal_notes": internalNotes, "created_at": created,
-				"items": []map[string]any{},
-				"payment": map[string]any{
-					"mp_payment_id": maybeString(paymentID), "mp_preference_id": maybeString(preferenceID),
-					"mp_status": maybeString(paymentStatus), "mp_status_detail": maybeString(paymentDetail),
-					"processed_at": maybeTime(paymentProcessed),
-				},
-			}
-			if shippedAt.Valid {
-				item["shipped_at"] = shippedAt.Time
-			}
-			items = append(items, item)
+		if err := rows.Scan(&id, &ref, &status, &name, &email, &phone, &shipping, &shippingCost, &subtotal, &total, &discountCode, &discount, &currency, &tracking, &carrier, &shippedAt, &internalNotes, &created, &paymentID, &preferenceID, &paymentStatus, &paymentDetail, &paymentProcessed); err != nil {
+			return nil, err
 		}
+		var address map[string]any
+		if err := json.Unmarshal(shipping, &address); err != nil {
+			return nil, err
+		}
+		orderIDs = append(orderIDs, id)
+		item := map[string]any{
+			"id": id, "external_reference": ref, "status": status,
+			"customer_name": name, "customer_email": email, "customer_phone": phone,
+			"shipping_address": address, "shipping_cost_ars_cents": shippingCost,
+			"subtotal_ars_cents": subtotal, "total_ars_cents": total, "discount_code": discountCode,
+			"discount_ars_cents": discount, "currency": currency, "tracking_number": tracking,
+			"shipping_carrier": carrier, "internal_notes": internalNotes, "created_at": created,
+			"items": []map[string]any{},
+			"payment": map[string]any{
+				"mp_payment_id": maybeString(paymentID), "mp_preference_id": maybeString(preferenceID),
+				"mp_status": maybeString(paymentStatus), "mp_status_detail": maybeString(paymentDetail),
+				"processed_at": maybeTime(paymentProcessed),
+			},
+		}
+		if shippedAt.Valid {
+			item["shipped_at"] = shippedAt.Time
+		}
+		items = append(items, item)
 	}
-	itemsByOrder := h.orderItemsBatch(r, orderIDs)
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	itemsByOrder, err := h.orderItemsBatch(r, orderIDs)
+	if err != nil {
+		return nil, err
+	}
 	for _, item := range items {
 		if id, ok := item["id"].(string); ok {
 			item["items"] = itemsByOrder[id]
 		}
 	}
-	return items
+	return items, nil
 }
 
-func (h Handler) orderItemsBatch(r *http.Request, orderIDs []string) map[string][]map[string]any {
+func (h Handler) orderItemsBatch(r *http.Request, orderIDs []string) (map[string][]map[string]any, error) {
 	out := make(map[string][]map[string]any, len(orderIDs))
 	if len(orderIDs) == 0 {
-		return out
+		return out, nil
 	}
 	rows, err := h.Pool.Query(r.Context(), `SELECT order_id, product_name, size_ml, quantity, unit_price_ars_cents, subtotal_ars_cents FROM order_items WHERE order_id::text = ANY($1) ORDER BY order_id`, orderIDs)
 	if err != nil {
-		return out
+		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var orderID, name string
 		var size, qty int
 		var unit, subtotal int64
-		if rows.Scan(&orderID, &name, &size, &qty, &unit, &subtotal) == nil {
-			out[orderID] = append(out[orderID], map[string]any{"product_name": name, "size_ml": size, "quantity": qty, "unit_price_ars_cents": unit, "subtotal_ars_cents": subtotal})
+		if err := rows.Scan(&orderID, &name, &size, &qty, &unit, &subtotal); err != nil {
+			return nil, err
 		}
+		out[orderID] = append(out[orderID], map[string]any{"product_name": name, "size_ml": size, "quantity": qty, "unit_price_ars_cents": unit, "subtotal_ars_cents": subtotal})
 	}
-	return out
-}
-
-func (h Handler) orderItems(r *http.Request, orderID string) []map[string]any {
-	rows, err := h.Pool.Query(r.Context(), `SELECT product_name, size_ml, quantity, unit_price_ars_cents, subtotal_ars_cents FROM order_items WHERE order_id=$1`, orderID)
-	if err != nil {
-		return []map[string]any{}
-	}
-	defer rows.Close()
-	items := []map[string]any{}
-	for rows.Next() {
-		var name string
-		var size, qty int
-		var unit, subtotal int64
-		if rows.Scan(&name, &size, &qty, &unit, &subtotal) == nil {
-			items = append(items, map[string]any{"product_name": name, "size_ml": size, "quantity": qty, "unit_price_ars_cents": unit, "subtotal_ars_cents": subtotal})
-		}
-	}
-	return items
+	return out, rows.Err()
 }
 
 type productPayload struct {
@@ -1067,6 +1133,41 @@ func maybeTime(v sql.NullTime) *time.Time {
 		return nil
 	}
 	return &v.Time
+}
+
+func pagination(r *http.Request, defaultLimit, maxLimit int) (int, int) {
+	limit := defaultLimit
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil {
+			limit = parsed
+		}
+	}
+	if limit <= 0 || limit > maxLimit {
+		limit = defaultLimit
+	}
+	offset := 0
+	if raw := r.URL.Query().Get("offset"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			offset = parsed
+		}
+	}
+	return limit, offset
+}
+
+func validOrderTransition(from, to string) bool {
+	if from == to {
+		return true
+	}
+	switch from {
+	case "pending":
+		return to == "paid" || to == "failed" || to == "cancelled"
+	case "paid":
+		return to == "shipped" || to == "cancelled"
+	case "shipped":
+		return to == "delivered"
+	default:
+		return false
+	}
 }
 
 func CleanCode(v string) string { return strings.ToUpper(strings.TrimSpace(v)) }

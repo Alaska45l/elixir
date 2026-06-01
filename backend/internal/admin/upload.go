@@ -2,8 +2,12 @@ package admin
 
 import (
 	"errors"
+	"mime"
 	"net/http"
+	"path/filepath"
+	"strings"
 
+	"elixir/backend/internal/audit"
 	"elixir/backend/internal/httpx"
 	"elixir/backend/internal/media"
 )
@@ -27,12 +31,16 @@ func (h Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, _, err := r.FormFile("file")
+	file, header, err := r.FormFile("file")
 	if err != nil {
 		httpx.Error(w, r, http.StatusBadRequest, "campo 'file' requerido")
 		return
 	}
 	defer file.Close()
+	if err := validateUploadHeader(header.Filename, header.Header.Get("Content-Type")); err != nil {
+		httpx.Error(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	folder := r.FormValue("folder")
 	if folder == "" {
@@ -49,5 +57,25 @@ func (h Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	audit.Log(r.Context(), h.Pool, audit.Event{ActorUsername: h.actor(r), Action: "media.upload", Metadata: map[string]any{"folder": folder}})
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": url})
+}
+
+func validateUploadHeader(filename, contentType string) error {
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".webp":
+	default:
+		return errors.New("la extensión debe ser jpg, jpeg, png o webp")
+	}
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return errors.New("content-type de imagen inválido")
+	}
+	switch strings.ToLower(mediaType) {
+	case "image/jpeg", "image/png", "image/webp":
+		return nil
+	default:
+		return errors.New("content-type de imagen no permitido")
+	}
 }

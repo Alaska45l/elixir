@@ -5,10 +5,10 @@
 </script>
 
 <div class="gallery">
-  <img class="main" src={images[active]?.url} alt={images[active]?.alt_text ?? 'Fragancia'} />
+  <img class="main" src={images[active]?.url} alt={images[active]?.alt_text ?? 'Fragancia'} width="900" height="1125" />
   <div class="thumbs">
     {#each images as image, i}
-      <button type="button" class:active={i === active} on:click={() => active = i}><img src={image.url} alt={image.alt_text ?? ''} /></button>
+      <button type="button" class:active={i === active} on:click={() => active = i}><img src={image.url} alt={image.alt_text ?? ''} loading="lazy" width="136" height="136" /></button>
     {/each}
   </div>
 </div>

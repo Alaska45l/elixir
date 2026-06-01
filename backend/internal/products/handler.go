@@ -70,6 +70,7 @@ func (h Handler) Search(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusInternalServerError, "no se pudo buscar")
 		return
 	}
+	w.Header().Set("Cache-Control", "public, max-age=30, stale-while-revalidate=120")
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 

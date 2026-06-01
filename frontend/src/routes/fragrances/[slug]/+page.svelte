@@ -1,5 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
   import ImageGallery from '$lib/components/ImageGallery.svelte';
   import NoteCloud from '$lib/components/NoteCloud.svelte';
   import ProductGrid from '$lib/components/ProductGrid.svelte';
@@ -15,11 +16,21 @@
   let selected = data.product.variants.find((v) => v.stock > 0) ?? data.product.variants[0];
   let qty = 1;
   $: if (selected) qty = Math.min(qty, selected.stock || 1);
-  if (browser) {
+  onMount(() => {
+    if (!browser) return;
     const key = 'elixir_recent';
-    const existing = JSON.parse(localStorage.getItem(key) ?? '[]') as string[];
-    localStorage.setItem(key, JSON.stringify([data.product.slug, ...existing.filter((x) => x !== data.product.slug)].slice(0, 6)));
-  }
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) ?? '[]') as unknown;
+      const existing = Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+      localStorage.setItem(key, JSON.stringify([data.product.slug, ...existing.filter((x) => x !== data.product.slug)].slice(0, 6)));
+    } catch {
+      try {
+        localStorage.setItem(key, JSON.stringify([data.product.slug]));
+      } catch {
+        // Ignore unavailable storage.
+      }
+    }
+  });
   function add() {
     if (!selected || selected.stock === 0) return;
     cart.add({

@@ -2,11 +2,14 @@ package config
 
 import (
 	"bufio"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 )
+
+const devSessionSecret = "dev-secret-change-me-dev-secret-change-me-dev-secret-change-me"
 
 type Config struct {
 	AppEnv            string
@@ -38,7 +41,10 @@ type Config struct {
 func Load() Config {
 	loadDotEnv(".env")
 	loadDotEnv("backend/.env")
-	hours, _ := strconv.Atoi(env("SESSION_DURATION_HOURS", "8"))
+	hours, err := strconv.Atoi(env("SESSION_DURATION_HOURS", "8"))
+	if err != nil {
+		hours = 0
+	}
 	databaseURL := env("DATABASE_URL", "")
 	if strings.Contains(databaseURL, "user:pass@host/dbname") {
 		databaseURL = ""
@@ -50,7 +56,7 @@ func Load() Config {
 		FrontendURL:       frontendURL,
 		BackendURL:        env("BACKEND_URL", "http://localhost:8080"),
 		DatabaseURL:       databaseURL,
-		SessionSecret:     env("SESSION_SECRET", "dev-secret-change-me-dev-secret-change-me-dev-secret-change-me"),
+		SessionSecret:     env("SESSION_SECRET", devSessionSecret),
 		SessionDuration:   time.Duration(hours) * time.Hour,
 		SessionSameSite:   env("SESSION_SAME_SITE", "strict"),
 		MPAccessToken:     os.Getenv("MP_ACCESS_TOKEN"),
@@ -70,6 +76,28 @@ func Load() Config {
 		R2BucketName:      os.Getenv("R2_BUCKET_NAME"),
 		R2PublicURL:       os.Getenv("R2_PUBLIC_URL"),
 	}
+}
+
+func (c Config) Validate() error {
+	appEnv := strings.ToLower(strings.TrimSpace(c.AppEnv))
+	if c.SessionDuration <= 0 {
+		return errors.New("SESSION_DURATION_HOURS must be an integer greater than zero")
+	}
+	if len(strings.TrimSpace(c.SessionSecret)) < 32 {
+		return errors.New("SESSION_SECRET must be at least 32 characters")
+	}
+	if appEnv != "development" {
+		if strings.TrimSpace(c.DatabaseURL) == "" {
+			return errors.New("DATABASE_URL is required outside development")
+		}
+		if c.SessionSecret == devSessionSecret || strings.Contains(c.SessionSecret, "change-this") {
+			return errors.New("SESSION_SECRET must be a production random secret")
+		}
+		if strings.TrimSpace(c.MPAccessToken) != "" && strings.TrimSpace(c.MPWebhookSecret) == "" {
+			return errors.New("MP_WEBHOOK_SECRET is required when MercadoPago is configured")
+		}
+	}
+	return nil
 }
 
 func loadDotEnv(path string) {

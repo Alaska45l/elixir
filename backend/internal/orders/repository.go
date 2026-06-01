@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -42,7 +43,10 @@ func (r DBRepository) Create(ctx context.Context, req CreateOrderRequest, valida
 	defer tx.Rollback(ctx)
 	ref := "ELX-" + uuid.NewString()
 	total := CalculateTotal(validation.SubtotalARSCents, req.ShippingCostARSCents, discountCents)
-	address, _ := json.Marshal(req.ShippingAddress)
+	address, err := json.Marshal(req.ShippingAddress)
+	if err != nil {
+		return nil, err
+	}
 	var order Order
 	err = tx.QueryRow(ctx, `
 INSERT INTO orders (external_reference, customer_name, customer_email, customer_phone, shipping_address, shipping_cost_ars_cents, subtotal_ars_cents, total_ars_cents, discount_code, discount_ars_cents, notes)
@@ -67,6 +71,15 @@ RETURNING id, external_reference, status, customer_name, customer_email, COALESC
 			return nil, err
 		}
 	}
+	if code := strings.ToUpper(strings.TrimSpace(req.DiscountCode)); code != "" {
+		tag, err := tx.Exec(ctx, `UPDATE discount_codes SET uses = uses + 1 WHERE code=$1 AND active=true AND (expires_at IS NULL OR expires_at > now()) AND (max_uses IS NULL OR uses < max_uses) AND min_order_cents <= $2`, code, validation.SubtotalARSCents)
+		if err != nil {
+			return nil, err
+		}
+		if tag.RowsAffected() != 1 {
+			return nil, errors.New("código de descuento inválido")
+		}
+	}
 	order.Items = validation.Items
 	return &order, tx.Commit(ctx)
 }
@@ -83,6 +96,8 @@ FROM orders WHERE external_reference=$1`, ref)
 	if err := row.Scan(&o.ID, &o.ExternalReference, &o.Status, &o.CustomerName, &o.CustomerEmail, &o.CustomerPhone, &raw, &o.ShippingCostARSCents, &o.SubtotalARSCents, &o.TotalARSCents, &o.DiscountCode, &o.DiscountARSCents, &o.Currency, &o.TrackingNumber, &o.Notes, &o.CreatedAt, &o.UpdatedAt); err != nil {
 		return nil, err
 	}
-	_ = json.Unmarshal(raw, &o.ShippingAddress)
+	if err := json.Unmarshal(raw, &o.ShippingAddress); err != nil {
+		return nil, err
+	}
 	return &o, nil
 }

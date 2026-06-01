@@ -34,7 +34,7 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 		if err := pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE filename=$1)`, file).Scan(&applied); err != nil {
 			return err
 		}
-		if applied {
+		if applied && !reapplyIdempotentMigration(file) {
 			continue
 		}
 		sqlBytes, err := os.ReadFile(filepath.Join(dir, file))
@@ -45,7 +45,7 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 		if err != nil {
 			return err
 		}
-		if _, err = tx.Exec(ctx, string(sqlBytes)); err == nil {
+		if _, err = tx.Exec(ctx, string(sqlBytes)); err == nil && !applied {
 			_, err = tx.Exec(ctx, `INSERT INTO schema_migrations(filename) VALUES($1)`, file)
 		}
 		if err != nil {
@@ -57,6 +57,10 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 		}
 	}
 	return nil
+}
+
+func reapplyIdempotentMigration(file string) bool {
+	return file == "005_indexes.sql"
 }
 
 func ResolveMigrationsDir() (string, error) {

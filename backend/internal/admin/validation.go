@@ -360,3 +360,24 @@ func validatePassword(password, username string) error {
 	}
 	return nil
 }
+
+func validateLoginPayload(username, password string) error {
+	if err := validateUsername(username); err != nil {
+		return err
+	}
+	if password == "" {
+		return errors.New("la contraseña es obligatoria")
+	}
+	if len(password) > 200 {
+		return errors.New("la contraseña es demasiado larga")
+	}
+	return nil
+}
+
+func auditActor(username string) string {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return "unknown"
+	}
+	return username
+}

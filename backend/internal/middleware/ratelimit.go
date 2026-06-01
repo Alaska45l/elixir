@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -27,15 +28,25 @@ func NewAPILimiter(limit int, window time.Duration) *LoginLimiter {
 
 func (l *LoginLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-		if ip == "" {
-			ip = r.RemoteAddr
-		}
+		ip := requestIP(r)
 		if retry := l.retryAfter(ip); retry > 0 {
 			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())))
 			httpx.Error(w, r, http.StatusTooManyRequests, "demasiados intentos")
 			return
 		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (l *LoginLimiter) Throttle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := requestIP(r)
+		if retry := l.retryAfter(ip); retry > 0 {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())))
+			httpx.Error(w, r, http.StatusTooManyRequests, "demasiadas solicitudes")
+			return
+		}
+		l.RegisterFailure(ip)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -74,4 +85,28 @@ func (l *LoginLimiter) prune(hits []time.Time, now time.Time) []time.Time {
 		}
 	}
 	return kept
+}
+
+func requestIP(r *http.Request) string {
+	if ip := forwardedIP(r.Header.Get("X-Forwarded-For")); ip != "" {
+		return ip
+	}
+	if ip := forwardedIP(r.Header.Get("X-Real-IP")); ip != "" {
+		return ip
+	}
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	return ip
+}
+
+func forwardedIP(raw string) string {
+	for _, value := range strings.Split(raw, ",") {
+		ip := strings.TrimSpace(value)
+		if net.ParseIP(ip) != nil {
+			return ip
+		}
+	}
+	return ""
 }

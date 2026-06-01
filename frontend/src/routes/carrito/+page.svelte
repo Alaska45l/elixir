@@ -17,6 +17,8 @@
   let shippingOptions: ShippingQuoteOption[] = [];
   let selectedShippingID = '';
   let quoting = false;
+  let checkingOut = false;
+  let error = '';
   const provinces = [
     ['C', 'Ciudad Autónoma de Buenos Aires'],
     ['B', 'Buenos Aires'],
@@ -48,21 +50,39 @@
   $: cartWeightGrams = $cart.reduce((sum, item) => sum + (item.weightGrams ?? 200) * item.quantity, 0);
   $: total = $cartSubtotal + shipping - discount;
   async function applyDiscount() {
-    const res = await apiFetch<DiscountValidation>('/api/discount/validate', { method: 'POST', body: JSON.stringify({ code: discountCode, subtotal_ars_cents: $cartSubtotal }) });
-    discount = res.valid ? res.discount_ars_cents : 0;
-    toast.push(res.valid ? 'Código aplicado' : res.message ?? 'Código inválido', res.valid ? 'ok' : 'error');
+    try {
+      const res = await apiFetch<DiscountValidation>('/api/discount/validate', { method: 'POST', body: JSON.stringify({ code: discountCode, subtotal_ars_cents: $cartSubtotal }) });
+      discount = res.valid ? res.discount_ars_cents : 0;
+      toast.push(res.valid ? 'Código aplicado' : res.message ?? 'Código inválido', res.valid ? 'ok' : 'error');
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : 'No se pudo validar el código', 'error');
+    }
   }
   async function abandoned() {
-    if (email && $cart.length) await apiFetch('/api/contact/abandoned-cart', { method: 'POST', body: JSON.stringify({ email, cart_data: { items: $cart } }) });
+    if (!email || !$cart.length) return;
+    try {
+      await apiFetch('/api/contact/abandoned-cart', { method: 'POST', body: JSON.stringify({ email, cart_data: { items: $cart } }) });
+    } catch {
+      // Best-effort recovery signal only.
+    }
   }
   async function checkout() {
+    error = '';
     if (!selectedShipping) { toast.push('Seleccioná una opción de envío', 'error'); return; }
-    const items = $cart.map((item) => ({ variant_id: item.variantId, quantity: item.quantity, unit_price_ars_cents: item.unitPriceCents }));
-    const validation = await apiFetch<CartValidation>('/api/cart/validate', { method: 'POST', body: JSON.stringify({ items }) });
-    if (!validation.valid) { toast.push(validation.errors.join('. '), 'error'); return; }
-    const order = await apiFetch<Order>('/api/orders', { method: 'POST', body: JSON.stringify({ items, customer_name: name, customer_email: email, customer_phone: phone, shipping_address: { address, province, postalCode, shipping_option: selectedShipping }, shipping_cost_ars_cents: shipping, discount_code: discountCode }) });
-    const pref = await apiFetch<{ init_point: string }>('/api/checkout/mercadopago/preference', { method: 'POST', body: JSON.stringify({ external_reference: order.external_reference }) });
-    location.href = pref.init_point;
+    checkingOut = true;
+    try {
+      const items = $cart.map((item) => ({ variant_id: item.variantId, quantity: item.quantity, unit_price_ars_cents: item.unitPriceCents }));
+      const validation = await apiFetch<CartValidation>('/api/cart/validate', { method: 'POST', body: JSON.stringify({ items }) });
+      if (!validation.valid) { toast.push(validation.errors.join('. '), 'error'); return; }
+      const order = await apiFetch<Order>('/api/orders', { method: 'POST', body: JSON.stringify({ items, customer_name: name, customer_email: email, customer_phone: phone, shipping_address: { address, province, postal_code: postalCode, shipping_option: selectedShipping }, shipping_cost_ars_cents: shipping, discount_code: discountCode }) });
+      const pref = await apiFetch<{ init_point: string }>('/api/checkout/mercadopago/preference', { method: 'POST', body: JSON.stringify({ external_reference: order.external_reference }) });
+      location.href = pref.init_point;
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'No se pudo finalizar la compra';
+      toast.push(error, 'error');
+    } finally {
+      checkingOut = false;
+    }
   }
   async function loadShippingOptions() {
     if (!postalCode.trim()) { toast.push('Ingresá el código postal', 'error'); return; }
@@ -76,6 +96,10 @@
       });
       selectedShippingID = shippingOptions[0]?.id ?? '';
       if (!shippingOptions.length) toast.push('No encontramos opciones de envío', 'error');
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : 'No se pudo cotizar el envío', 'error');
+      shippingOptions = [];
+      selectedShippingID = '';
     } finally {
       quoting = false;
     }
@@ -86,7 +110,12 @@
   }
 </script>
 
-<svelte:head><title>Carrito | ELIXIR Exclusive</title></svelte:head>
+<svelte:head>
+  <title>Carrito | ELIXIR Exclusive</title>
+  <meta name="description" content="Revisá tu carrito, cotizá envío y finalizá tu compra en ELIXIR Exclusive." />
+  <meta property="og:title" content="Carrito | ELIXIR Exclusive" />
+  <meta property="og:description" content="Checkout seguro con envío nacional y pago en ARS." />
+</svelte:head>
 
 <section class="container page-pad">
   <p class="eyebrow">Finalizar compra</p>
@@ -154,7 +183,8 @@
       </section>
       <div class="discount"><input class="input" placeholder="Código de descuento" bind:value={discountCode} /><button class="btn" type="button" on:click={applyDiscount}>Aplicar</button></div>
       <div class="totals"><span>Subtotal</span><b>{formatARS($cartSubtotal)}</b><span>Envío</span><b>{formatARS(shipping)}</b><span>Descuento</span><b>{formatARS(discount)}</b><span>Total</span><strong>{formatARS(total)}</strong></div>
-      <button class="btn primary" type="submit" disabled={$cart.length === 0}>Finalizar compra</button>
+      {#if error}<p class="error">{error}</p>{/if}
+      <button class="btn primary" type="submit" disabled={$cart.length === 0 || checkingOut}>{checkingOut ? 'Redirigiendo...' : 'Finalizar compra'}</button>
       <a class="btn" href={wa()} target="_blank" rel="noreferrer">Consultar por WhatsApp</a>
     </form>
   </div>
@@ -246,6 +276,7 @@
     background: rgba(224,163,154,0.08);
   }
   .summary { display: grid; gap: 16px; border-radius: 14px; padding: 22px; background: var(--color-surface); box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
+  .error { color: var(--color-danger-soft); }
   .compact { gap: 12px; }
   .discount { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
   .shipping-options { display: grid; gap: 12px; }

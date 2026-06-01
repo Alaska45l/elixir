@@ -3,6 +3,7 @@ package httpx
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 )
 
@@ -14,7 +15,9 @@ type ErrorResponse struct {
 func WriteJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		slog.Error("json response encode failed", "error", err)
+	}
 }
 
 func Error(w http.ResponseWriter, r *http.Request, status int, message string) {

@@ -28,6 +28,9 @@ import (
 func main() {
 	cfg := config.Load()
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	pool, err := db.Connect(context.Background(), cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -38,6 +41,7 @@ func main() {
 
 	loginLimiter := middleware.NewLoginLimiter(5, 10*time.Minute)
 	apiLimiter := middleware.NewAPILimiter(60, time.Minute)
+	webhookLimiter := middleware.NewAPILimiter(120, time.Minute)
 	secureCookies := admin.IsSecureEnv(cfg.AppEnv)
 	sessions := admin.SessionManager{Secret: cfg.SessionSecret, Duration: cfg.SessionDuration, Secure: secureCookies, SameSite: admin.ResolveSameSite(cfg.SessionSameSite, secureCookies)}
 	discountSvc := discount.Service{Repo: discount.Repository{Pool: pool}}
@@ -49,10 +53,13 @@ func main() {
 
 	productHandler := products.Handler{Service: products.Service{Repo: products.Repository{Pool: pool}}}
 	orderHandler := orders.Handler{Service: orderSvc}
-	paymentHandler := payments.Handler{Service: payments.Service{
-		Repo: payments.DBRepository{Pool: pool},
-		MP:   payments.MercadoPagoClient{AccessToken: cfg.MPAccessToken, BackendURL: cfg.BackendURL, FrontendURL: cfg.FrontendURL},
-	}}
+	paymentHandler := payments.Handler{
+		Service: payments.Service{
+			Repo: payments.DBRepository{Pool: pool},
+			MP:   payments.MercadoPagoClient{AccessToken: cfg.MPAccessToken, BackendURL: cfg.BackendURL, FrontendURL: cfg.FrontendURL},
+		},
+		WebhookSecret: cfg.MPWebhookSecret,
+	}
 	adminHandler := admin.Handler{Pool: pool, Sessions: sessions, Auth: admin.AuthService{Pool: pool, Sessions: sessions, Limiter: loginLimiter}, Media: storageSvc}
 	contactHandler := contact.Handler{Service: contact.Service{Pool: pool}}
 	shippingProviders := []shipping.ShippingProvider{
@@ -66,40 +73,41 @@ func main() {
 	r.Use(middleware.SecurityHeaders)
 	r.Use(middleware.Compress)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestTimeout(15 * time.Second))
 	r.Use(middleware.RequestLogger)
 	r.Use(middleware.CORS(cfg.AllowedOrigins))
 
-	adminCSRF := middleware.CSRF(cfg.AllowedOrigins, cfg.BackendURL)
+	csrf := middleware.CSRF(cfg.AllowedOrigins, cfg.BackendURL)
 
 	r.Group(func(ur chi.Router) {
-		ur.Use(middleware.NoStore, adminCSRF, middleware.AdminSession(sessions))
+		ur.Use(middleware.NoStore, csrf, middleware.AdminSession(sessions))
 		ur.Post("/api/admin/upload", adminHandler.UploadImage)
 	})
 
 	r.Group(func(rr chi.Router) {
 		rr.Use(middleware.BodyLimit(2 << 20))
+		rr.Use(csrf)
 
 		rr.Mount("/", health.Handler{Pool: pool, Started: time.Now(), Version: "1.0.0"}.Routes())
 		rr.Get("/api/homepage", adminHandler.PublicHomepage)
 		rr.Get("/api/settings", adminHandler.PublicSettings)
-		rr.With(apiLimiter.Middleware).Get("/api/products/search", productHandler.Search)
+		rr.With(apiLimiter.Throttle).Get("/api/products/search", productHandler.Search)
 		rr.Mount("/api/products", productHandler.Routes())
-		rr.With(apiLimiter.Middleware).Post("/api/cart/validate", orderHandler.ValidateCart)
-		rr.With(apiLimiter.Middleware).Post("/api/discount/validate", discount.Handler{Service: discountSvc}.Validate)
-		rr.Post("/api/orders", orderHandler.Create)
+		rr.With(apiLimiter.Throttle).Post("/api/cart/validate", orderHandler.ValidateCart)
+		rr.With(apiLimiter.Throttle).Post("/api/discount/validate", discount.Handler{Service: discountSvc}.Validate)
+		rr.With(apiLimiter.Throttle).Post("/api/orders", orderHandler.Create)
 		rr.Get("/api/orders/{external_reference}", orderHandler.Status)
-		rr.Post("/api/checkout/mercadopago/preference", paymentHandler.CreatePreference)
-		rr.Post("/api/payments/mercadopago/webhook", paymentHandler.Webhook)
+		rr.With(apiLimiter.Throttle).Post("/api/checkout/mercadopago/preference", paymentHandler.CreatePreference)
+		rr.With(webhookLimiter.Throttle).Post("/api/payments/mercadopago/webhook", paymentHandler.Webhook)
 		rr.Get("/api/shipping/zones", shippingHandler.Zones)
-		rr.Post("/api/shipping/quote", shippingHandler.Quote)
-		rr.Post("/api/contact", contactHandler.Message)
-		rr.Post("/api/contact/abandoned-cart", contactHandler.AbandonedCart)
+		rr.With(apiLimiter.Throttle).Post("/api/shipping/quote", shippingHandler.Quote)
+		rr.With(apiLimiter.Throttle).Post("/api/contact", contactHandler.Message)
+		rr.With(apiLimiter.Throttle).Post("/api/contact/abandoned-cart", contactHandler.AbandonedCart)
 
-		rr.With(middleware.NoStore, adminCSRF, loginLimiter.Middleware).Post("/api/admin/login", adminHandler.Login)
-		rr.With(middleware.NoStore, adminCSRF).Post("/api/admin/logout", adminHandler.Logout)
+		rr.With(middleware.NoStore, loginLimiter.Middleware).Post("/api/admin/login", adminHandler.Login)
+		rr.With(middleware.NoStore).Post("/api/admin/logout", adminHandler.Logout)
 		rr.Group(func(ar chi.Router) {
 			ar.Use(middleware.NoStore)
-			ar.Use(adminCSRF)
 			ar.Use(middleware.AdminSession(sessions))
 			ar.Get("/api/admin/me", adminHandler.Me)
 			ar.Post("/api/admin/password", adminHandler.ChangePassword)

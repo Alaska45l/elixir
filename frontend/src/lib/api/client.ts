@@ -130,6 +130,8 @@ export type ShippingQuoteOption = {
 
 export type ListResponse<T> = { items: T[]; total?: number; limit?: number; offset?: number; error?: string };
 
+const DEFAULT_TIMEOUT_MS = 15000;
+
 async function responseError(res: Response): Promise<Error> {
   const text = await res.text();
   let message = '';
@@ -139,7 +141,22 @@ async function responseError(res: Response): Promise<Error> {
   } catch {
     message = text;
   }
-  return new Error(message || 'No se pudo completar la operación');
+  if (!message) {
+    switch (res.status) {
+      case 401:
+        message = 'Sesión expirada. Iniciá sesión nuevamente.';
+        break;
+      case 403:
+        message = 'No tenés permisos para realizar esta acción.';
+        break;
+      case 404:
+        message = 'No encontramos el recurso solicitado.';
+        break;
+      default:
+        message = res.status >= 500 ? 'Servicio temporalmente no disponible' : 'No se pudo completar la operación';
+    }
+  }
+  return new Error(message);
 }
 
 function apiBase(path: string): string {
@@ -149,19 +166,40 @@ function apiBase(path: string): string {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typeof fetch = fetch): Promise<T> {
-  const res = await fetcher(`${apiBase(path)}${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    ...init
-  });
+  const controller = init?.signal ? null : new AbortController();
+  const timeout = controller ? setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS) : undefined;
+  let res: Response;
+  try {
+    res = await fetcher(`${apiBase(path)}${path}`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+      ...init,
+      signal: init?.signal ?? controller?.signal
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('La solicitud tardó demasiado. Intentá nuevamente.');
+    }
+    throw new Error('No se pudo conectar con el servicio. Intentá nuevamente.');
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
   if (!res.ok) {
-    throw await responseError(res);
+    const err = await responseError(res);
+    if (browser && res.status === 401 && path.startsWith('/api/admin') && !path.includes('/login')) {
+      window.location.assign('/admin/login');
+    }
+    throw err;
   }
   if (res.status === 204) {
     return undefined as T;
   }
   const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  try {
+    return (text ? JSON.parse(text) : undefined) as T;
+  } catch {
+    throw new Error('La respuesta del servicio no es válida.');
+  }
 }
 
 export async function uploadAdminImage(file: File, folder = 'products', fetcher: typeof fetch = fetch): Promise<string> {
@@ -194,7 +232,7 @@ export async function getProductsResponse(fetcher: typeof fetch = fetch, query =
     const data = await apiFetch<ListResponse<Product>>(`/api/products${query}`, undefined, fetcher);
     return data;
   } catch {
-    return { items: [], total: 0, error: 'Error loading items' };
+    return { items: [], total: 0, error: 'No pudimos cargar el catálogo.' };
   }
 }
 
@@ -246,15 +284,15 @@ export async function quoteShipping(req: ShippingQuoteRequest): Promise<Shipping
 }
 
 export const defaultHomepage: HomepageSettings = {
-  hero_heading: 'Lorem ipsum dolor sit amet',
-  hero_subheading: 'Consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+  hero_heading: 'Perfumería selecta con entrega nacional',
+  hero_subheading: 'Fragancias originales, asesoramiento privado y despacho cuidado desde Buenos Aires.',
   hero_image_url: 'https://images.unsplash.com/photo-1619994403073-2cec844b8e63?auto=format&fit=crop&w=1200&q=85',
   hero_image_mode: 'product_covers',
   hero_rotation_interval_ms: 8000,
   hero_cta_label: 'Catálogo',
   hero_cta_url: '/fragrances',
-  editorial_heading: 'Lorem ipsum',
-  editorial_body: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+  editorial_heading: 'Selección curada',
+  editorial_body: 'Elegimos perfumes con trazabilidad, buena performance y una experiencia de compra sobria de punta a punta.',
   editorial_image_url: 'https://images.unsplash.com/photo-1595425970377-c9703cf48b6f?auto=format&fit=crop&w=1000&q=85'
 };
 
@@ -262,19 +300,19 @@ export const defaultSettings: SiteSettings = {
   footer_instagram_url: 'https://www.instagram.com/',
   footer_tiktok_url: 'https://www.tiktok.com/',
   footer_whatsapp_url: '',
-  announcement_bar_text: 'Lorem ipsum dolor sit amet · Consectetur adipiscing elit · Sed do eiusmod tempor',
+  announcement_bar_text: 'Envíos a todo el país · Empaque discreto · Seguimiento personalizado',
   announcement_bar_active: true,
   about_title: 'ELIXIR Exclusive',
-  about_description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+  about_description: 'Perfumería argentina de lujo discreto. Fragancias intensas, envíos nacionales y atención privada.',
   about_location: 'Buenos Aires, Argentina',
   about_phone: '',
   faq_items: [
-    { question: '¿Los perfumes son originales?', answer: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-    { question: '¿Qué medios de pago aceptan?', answer: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-    { question: '¿Hacen envíos?', answer: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-    { question: '¿Puedo consultar por WhatsApp?', answer: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' }
+    { question: '¿Los perfumes son originales?', answer: 'Sí. ELIXIR Exclusive comercializa fragancias seleccionadas y documentadas.' },
+    { question: '¿Qué medios de pago aceptan?', answer: 'El checkout opera en ARS mediante MercadoPago.' },
+    { question: '¿Hacen envíos?', answer: 'Sí, a CABA, GBA e Interior con seguimiento.' },
+    { question: '¿Puedo consultar por WhatsApp?', answer: 'Sí. Recomendamos WhatsApp para asesoramiento rápido.' }
   ],
-  return_policy_html: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>',
+  return_policy_html: '<p>Los cambios se revisan caso por caso con el producto cerrado, sin uso y dentro de los plazos informados por atención al cliente.</p>',
   navbar_product_categories: [
     { label: 'Fragancias Unisex', href: '/fragrances?gender=Unisex' },
     { label: 'Fragancias Masculinas', href: '/fragrances?gender=Masculino' },

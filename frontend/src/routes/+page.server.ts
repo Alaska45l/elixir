@@ -1,5 +1,6 @@
 import { getProducts } from '$lib/api/client';
 import type { Product } from '$lib/api/client';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 const FAMILIES = ['Oriental', 'Floral', 'Amaderado', 'Cítrico', 'Fresco', 'Gourmand'];
@@ -18,14 +19,18 @@ type HeroImageData = {
 };
 
 export const load: PageServerLoad = async ({ fetch, parent }) => {
-  const { homepage } = await parent();
-  const [featured, collections, heroImages] = await Promise.all([
-    getProducts(fetch, '?featured=true&limit=3'),
-    buildCollections(fetch),
-    homepage.hero_image_mode === 'product_covers' ? buildHeroImages(fetch) : Promise.resolve([])
-  ]);
+  try {
+    const { homepage } = await parent();
+    const [featured, collections, heroImages] = await Promise.all([
+      getProducts(fetch, '?featured=true&limit=3'),
+      buildCollections(fetch),
+      homepage.hero_image_mode === 'product_covers' ? buildHeroImages(fetch) : Promise.resolve([])
+    ]);
 
-  return { homepage, featured: featured.slice(0, 3), collections, heroImages };
+    return { homepage, featured: featured.slice(0, 3), collections, heroImages };
+  } catch {
+    error(503, 'No pudimos cargar la página de inicio');
+  }
 };
 
 async function buildHeroImages(fetcher: typeof fetch): Promise<HeroImageData[]> {

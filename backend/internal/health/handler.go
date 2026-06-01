@@ -24,17 +24,17 @@ func (h Handler) Routes() http.Handler {
 func (h Handler) Health(w http.ResponseWriter, r *http.Request) {
 	status := "ok"
 	dbStatus := "ok"
+	httpStatus := http.StatusOK
 	dbPool := map[string]int32{"total": 0, "idle": 0, "acquired": 0}
 	if err := db.Ping(r.Context(), h.Pool); err != nil {
 		dbStatus = "unavailable"
-		if h.Pool != nil {
-			status = "degraded"
-		}
+		status = "degraded"
+		httpStatus = http.StatusServiceUnavailable
 	} else if h.Pool != nil {
 		stat := h.Pool.Stat()
 		dbPool = map[string]int32{"total": stat.TotalConns(), "idle": stat.IdleConns(), "acquired": stat.AcquiredConns()}
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+	httpx.WriteJSON(w, httpStatus, map[string]any{
 		"status":         status,
 		"db":             dbStatus,
 		"db_pool":        dbPool,

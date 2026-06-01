@@ -31,6 +31,8 @@
 <svelte:head>
   <title>Fragancias | ELIXIR Exclusive</title>
   <meta name="description" content="Catálogo de fragancias ELIXIR Exclusive: orientales, florales, amaderadas, cítricas, frescas y gourmand." />
+  <meta property="og:title" content="Fragancias | ELIXIR Exclusive" />
+  <meta property="og:description" content="Catálogo de perfumes originales con filtros por familia, género y disponibilidad." />
 </svelte:head>
 
 <section class="container page-pad catalog-head">
@@ -58,7 +60,7 @@
 <section class="container catalog">
   <div>
     {#if data.loadError}
-      <div class="error-state" role="status">Error loading items</div>
+      <div class="error-state" role="status">{data.loadError}</div>
     {:else}
       <BentoProductMosaic products={data.products} />
       {#if data.total > data.limit}

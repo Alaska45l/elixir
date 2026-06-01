@@ -50,7 +50,7 @@ func NewStorageService(accountID, accessKey, secretKey, bucketName, publicURL st
 		return nil, errors.New("media: configuración R2 incompleta")
 	}
 
-	cfg, err := awscfg.LoadDefaultConfig(context.TODO(),
+	cfg, err := awscfg.LoadDefaultConfig(context.Background(),
 		awscfg.WithRegion("auto"),
 		awscfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
 	)

@@ -65,8 +65,8 @@
 </script>
 
 <svelte:head>
-  <title>ELIXIR Exclusive | Lorem ipsum</title>
-  <meta name="description" content="Lorem ipsum dolor sit amet, consectetur adipiscing elit." />
+  <title>ELIXIR Exclusive | Perfumería selecta</title>
+  <meta name="description" content="Perfumería argentina de lujo discreto con fragancias originales, asesoramiento privado y envíos a todo el país." />
   <meta property="og:title" content="ELIXIR Exclusive" />
   <meta property="og:description" content={data.homepage.hero_subheading} />
   <meta property="og:image" content={heroMetaImage} />

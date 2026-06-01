@@ -1,112 +1,11 @@
 <script lang="ts">
   import { draw, fade } from 'svelte/transition';
-  import { geoPath, geoTransverseMercator } from 'd3-geo';
-  import argentinaGeojsonRaw from '$lib/data/argentina.geojson?raw';
-  import type { Feature, FeatureCollection, MultiPolygon, Polygon, Position } from 'geojson';
-
-  type Coordinates = [number, number];
-  type ProvinceFeature = Feature<Polygon | MultiPolygon, { name?: string }>;
-  type ProvinceCollection = FeatureCollection<Polygon | MultiPolygon, { name?: string }>;
-
-  const VIEWBOX_WIDTH = 520;
-  const VIEWBOX_HEIGHT = 560;
-  const argentina = normalizeCollection(JSON.parse(argentinaGeojsonRaw) as ProvinceCollection);
-  const buenosAires: Coordinates = [-58.3816, -34.6037];
-  const destinations = [
-    { name: 'Salta', coordinates: [-65.4122, -24.7821] as Coordinates },
-    { name: 'Misiones', coordinates: [-54.5736, -25.5972] as Coordinates },
-    { name: 'Córdoba', coordinates: [-64.1888, -31.4201] as Coordinates },
-    { name: 'Mendoza', coordinates: [-68.8458, -32.8895] as Coordinates },
-    { name: 'Neuquén', coordinates: [-68.0591, -38.9516] as Coordinates }
-  ];
-
-  const projection = geoTransverseMercator()
-    .rotate([64, 0])
-    .center([0, -38])
-    .fitExtent([[56, 28], [464, 526]], argentina);
-  const pathGenerator = geoPath(projection);
-  const provincePaths = argentina.features.map((feature, index) => ({
-    id: feature.properties?.name ?? `province-${index}`,
-    path: pathGenerator(feature) ?? ''
-  }));
-  const origin = projectPoint(buenosAires);
-  const routes = destinations.map((destination, index) => {
-    const target = projectPoint(destination.coordinates);
-    return {
-      ...destination,
-      target,
-      path: routePath(origin, target, index)
-    };
-  });
-
-  function normalizeCollection(collection: ProvinceCollection): ProvinceCollection {
-    return {
-      ...collection,
-      features: collection.features.map(normalizeFeature)
-    };
-  }
-
-  function normalizeFeature(feature: ProvinceFeature): ProvinceFeature {
-    const geometry = feature.geometry;
-    if (geometry.type === 'Polygon') {
-      return {
-        ...feature,
-        geometry: {
-          ...geometry,
-          coordinates: normalizePolygon(geometry.coordinates)
-        }
-      };
-    }
-
-    return {
-      ...feature,
-      geometry: {
-        ...geometry,
-        coordinates: geometry.coordinates.map(normalizePolygon)
-      }
-    };
-  }
-
-  function normalizePolygon(polygon: Polygon['coordinates']): Polygon['coordinates'] {
-    return polygon.map((ring, index) => {
-      const shouldReverse = index === 0 ? signedRingArea(ring) > 0 : signedRingArea(ring) < 0;
-      return shouldReverse ? [...ring].reverse() : ring;
-    });
-  }
-
-  function signedRingArea(ring: Position[]) {
-    let area = 0;
-    for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
-      area += ring[previous][0] * ring[index][1] - ring[index][0] * ring[previous][1];
-    }
-    return area / 2;
-  }
-
-  function projectPoint(coordinates: Coordinates) {
-    const point = projection(coordinates);
-    return {
-      x: point?.[0] ?? VIEWBOX_WIDTH / 2,
-      y: point?.[1] ?? VIEWBOX_HEIGHT / 2
-    };
-  }
-
-  function routePath(start: { x: number; y: number }, end: { x: number; y: number }, index: number) {
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const isSouth = dy > 0;
-    const isNorthEast = dy < 0 && dx > 0; // Targets Misiones
-    
-    // Push midX aggressively left (inland) if going to Misiones
-    const midX = start.x + dx * (isNorthEast ? 0.05 : (isSouth ? 0.2 : 0.4));
-    const midY = start.y + dy * (isSouth ? 0.6 : 0.3);
-    
-    return `M ${start.x} ${start.y} L ${midX} ${midY} L ${end.x} ${end.y}`;
-  }
+  import { origin, provincePaths, routes, VIEWBOX_HEIGHT, VIEWBOX_WIDTH } from '$lib/data/argentina-map';
 </script>
 
 <svg class="scene-map" viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} role="img" aria-labelledby="map-title map-desc">
   <title id="map-title">Alcance Nacional</title>
-  <desc id="map-desc">Mapa de Argentina renderizado desde GeoJSON con rutas desde Buenos Aires hacia distintas provincias.</desc>
+  <desc id="map-desc">Mapa de Argentina con rutas desde Buenos Aires hacia distintas provincias.</desc>
   <defs>
     <filter id="map-soft-shadow" x="-30%" y="-30%" width="160%" height="160%">
       <feDropShadow dx="0" dy="16" stdDeviation="14" flood-color="var(--color-text)" flood-opacity=".14" />
