@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="620" viewBox="0 0 1080 620" role="img" aria-labelledby="title desc">
+  <title id="title">Backend runtime architecture</title>
+  <desc id="desc">Go API request flow through middleware, route handlers, services, repositories, PostgreSQL, MercadoPago, and Cloudflare R2.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#26415a"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .box { fill: #ffffff; stroke: #9aaec3; stroke-width: 2; rx: 14; }
+      .guard { fill: #eef6f1; stroke: #5d8f7f; }
+      .state { fill: #fff7e6; stroke: #b9822e; }
+      .title { font: 700 26px Arial, sans-serif; fill: #172333; }
+      .label { font: 700 16px Arial, sans-serif; fill: #172333; }
+      .small { font: 14px Arial, sans-serif; fill: #4a5e70; }
+      .line { stroke: #26415a; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" width="1080" height="620"/>
+  <text x="48" y="54" class="title">Backend request and state flow</text>
+  <text x="48" y="82" class="small">Handlers stay thin. Services enforce commerce behavior. PostgreSQL stores the durable truth.</text>
+
+  <rect class="box" x="48" y="150" width="210" height="92"/>
+  <text x="76" y="187" class="label">HTTP client</text>
+  <text x="76" y="214" class="small">frontend proxy, browser, webhook</text>
+
+  <rect class="box guard" x="314" y="128" width="230" height="136"/>
+  <text x="342" y="164" class="label">Global middleware</text>
+  <text x="342" y="192" class="small">security headers</text>
+  <text x="342" y="216" class="small">CORS, CSRF, limits</text>
+  <text x="342" y="240" class="small">logging, timeout, recovery</text>
+
+  <rect class="box" x="602" y="128" width="204" height="136"/>
+  <text x="630" y="164" class="label">Route handlers</text>
+  <text x="630" y="192" class="small">products, orders</text>
+  <text x="630" y="216" class="small">payments, shipping</text>
+  <text x="630" y="240" class="small">admin, contact</text>
+
+  <rect class="box" x="862" y="128" width="170" height="136"/>
+  <text x="890" y="164" class="label">Services</text>
+  <text x="890" y="192" class="small">validation</text>
+  <text x="890" y="216" class="small">totals</text>
+  <text x="890" y="240" class="small">integrations</text>
+
+  <rect class="box state" x="108" y="378" width="190" height="92"/>
+  <text x="136" y="414" class="label">PostgreSQL</text>
+  <text x="136" y="441" class="small">catalog, orders, admin</text>
+
+  <rect class="box state" x="444" y="378" width="190" height="92"/>
+  <text x="472" y="414" class="label">MercadoPago</text>
+  <text x="472" y="441" class="small">preferences, payment fetch</text>
+
+  <rect class="box state" x="780" y="378" width="190" height="92"/>
+  <text x="808" y="414" class="label">Cloudflare R2</text>
+  <text x="808" y="441" class="small">WebP media objects</text>
+
+  <path class="line" d="M258 196 H314"/>
+  <path class="line" d="M544 196 H602"/>
+  <path class="line" d="M806 196 H862"/>
+  <path class="line" d="M947 264 C900 330 280 316 203 378"/>
+  <path class="line" d="M947 264 C850 345 578 310 539 378"/>
+  <path class="line" d="M947 264 C940 326 880 330 875 378"/>
+</svg>

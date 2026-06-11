@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="620" viewBox="0 0 1080 620" role="img" aria-labelledby="title desc">
+  <title id="title">Frontend runtime architecture</title>
+  <desc id="desc">SvelteKit routes, loaders, API client, same-origin proxy, browser stores, admin session flow, and backend API boundary.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#2c4154"/>
+    </marker>
+    <style>
+      .bg { fill: #fbfaf8; }
+      .box { fill: #ffffff; stroke: #c8bda8; stroke-width: 2; rx: 14; }
+      .client { fill: #fff4ec; stroke: #d77a45; }
+      .server { fill: #eef7fb; stroke: #5e8ba8; }
+      .state { fill: #eef8f2; stroke: #61906f; }
+      .title { font: 700 26px Arial, sans-serif; fill: #2b251d; }
+      .label { font: 700 16px Arial, sans-serif; fill: #2b251d; }
+      .small { font: 14px Arial, sans-serif; fill: #5b5248; }
+      .line { stroke: #2c4154; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #887b68; stroke-width: 2; fill: none; stroke-dasharray: 7 5; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" width="1080" height="620"/>
+  <text x="48" y="54" class="title">Frontend request flow</text>
+  <text x="48" y="82" class="small">SvelteKit owns rendering and proxying. The Go API remains authoritative for commerce and admin state.</text>
+
+  <rect class="box client" x="56" y="150" width="220" height="96"/>
+  <text x="84" y="187" class="label">Browser routes</text>
+  <text x="84" y="214" class="small">storefront, cart, admin</text>
+
+  <rect class="box state" x="56" y="342" width="220" height="96"/>
+  <text x="84" y="379" class="label">Client stores</text>
+  <text x="84" y="406" class="small">cart, wishlist, toasts</text>
+
+  <rect class="box server" x="342" y="122" width="230" height="96"/>
+  <text x="370" y="159" class="label">Server loaders</text>
+  <text x="370" y="186" class="small">homepage, catalog, order</text>
+
+  <rect class="box server" x="342" y="276" width="230" height="96"/>
+  <text x="370" y="313" class="label">apiFetch()</text>
+  <text x="370" y="340" class="small">timeouts and errors</text>
+
+  <rect class="box server" x="342" y="430" width="230" height="96"/>
+  <text x="370" y="467" class="label">API proxy</text>
+  <text x="370" y="494" class="small">/api/[...path]</text>
+
+  <rect class="box server" x="638" y="276" width="210" height="96"/>
+  <text x="666" y="313" class="label">Go backend</text>
+  <text x="666" y="340" class="small">catalog and commerce API</text>
+
+  <rect class="box state" x="892" y="150" width="150" height="96"/>
+  <text x="920" y="187" class="label">PostgreSQL</text>
+  <text x="920" y="214" class="small">durable state</text>
+
+  <rect class="box state" x="892" y="342" width="150" height="96"/>
+  <text x="920" y="379" class="label">MercadoPago</text>
+  <text x="920" y="406" class="small">checkout redirect</text>
+
+  <path class="line" d="M276 198 H342"/>
+  <path class="line" d="M276 198 C304 256 314 298 342 324"/>
+  <path class="line" d="M276 390 C306 374 316 344 342 324"/>
+  <path class="line" d="M572 324 H638"/>
+  <path class="line" d="M572 478 C614 432 616 370 638 324"/>
+  <path class="line" d="M848 324 C878 270 880 220 892 198"/>
+  <path class="dash" d="M848 324 C880 338 876 380 892 390"/>
+</svg>
