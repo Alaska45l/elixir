@@ -8,10 +8,6 @@ Perfume commerce platform with a SvelteKit storefront, a Go API, PostgreSQL pers
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-required-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 ![MercadoPago](https://img.shields.io/badge/MercadoPago-checkout-009EE3?style=for-the-badge)
 
-<p align="center">
-  <img src="frontend/static/elixir-logo.webp" alt="ELIXIR Exclusive logo" width="180">
-</p>
-
 ![ELIXIR Exclusive system architecture](docs/assets/system-architecture.svg)
 
 ## What It Does
