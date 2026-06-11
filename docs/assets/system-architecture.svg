@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="650" viewBox="0 0 1120 650" role="img" aria-labelledby="title desc">
+  <title id="title">ELIXIR Exclusive system architecture</title>
+  <desc id="desc">SvelteKit frontend proxies API traffic to a Go backend that owns catalog, order, payment, shipping, media, and admin data flows.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#1f3b4d"/>
+    </marker>
+    <style>
+      .bg { fill: #f8faf7; }
+      .group { fill: #ffffff; stroke: #d9e2dc; stroke-width: 2; rx: 18; }
+      .box { fill: #fdfdfb; stroke: #8aa398; stroke-width: 2; rx: 12; }
+      .store { fill: #edf7f3; stroke: #5d8f7f; }
+      .api { fill: #eef4fb; stroke: #5a7da0; }
+      .external { fill: #fff6e5; stroke: #b98a2d; }
+      .title { font: 700 26px Arial, sans-serif; fill: #193027; }
+      .label { font: 700 17px Arial, sans-serif; fill: #193027; }
+      .small { font: 14px Arial, sans-serif; fill: #41554d; }
+      .line { stroke: #1f3b4d; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .muted { stroke: #8aa398; stroke-width: 2; stroke-dasharray: 6 5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" width="1120" height="650"/>
+  <text x="48" y="54" class="title">ELIXIR Exclusive runtime map</text>
+  <text x="48" y="82" class="small">Browser state is useful for UX. Backend state is authoritative for price, stock, sessions, payment, and media.</text>
+
+  <rect class="group" x="48" y="124" width="304" height="428"/>
+  <text x="76" y="164" class="label">Browser</text>
+  <rect class="box store" x="76" y="194" width="248" height="84"/>
+  <text x="100" y="228" class="label">Storefront routes</text>
+  <text x="100" y="254" class="small">catalog, detail, cart, order</text>
+  <rect class="box store" x="76" y="306" width="248" height="84"/>
+  <text x="100" y="340" class="label">Admin routes</text>
+  <text x="100" y="366" class="small">products, orders, settings</text>
+  <rect class="box store" x="76" y="418" width="248" height="84"/>
+  <text x="100" y="452" class="label">Local stores</text>
+  <text x="100" y="478" class="small">cart, wishlist, toasts</text>
+
+  <rect class="group" x="408" y="124" width="304" height="428"/>
+  <text x="436" y="164" class="label">SvelteKit server</text>
+  <rect class="box api" x="436" y="194" width="248" height="84"/>
+  <text x="460" y="228" class="label">SSR loaders</text>
+  <text x="460" y="254" class="small">homepage, settings, products</text>
+  <rect class="box api" x="436" y="306" width="248" height="84"/>
+  <text x="460" y="340" class="label">Same-origin proxy</text>
+  <text x="460" y="366" class="small">/api/[...path]</text>
+  <rect class="box api" x="436" y="418" width="248" height="84"/>
+  <text x="460" y="452" class="label">Security headers</text>
+  <text x="460" y="478" class="small">CSP, HSTS, frame deny</text>
+
+  <rect class="group" x="768" y="124" width="304" height="428"/>
+  <text x="796" y="164" class="label">Go API</text>
+  <rect class="box" x="796" y="194" width="248" height="84"/>
+  <text x="820" y="228" class="label">Public API</text>
+  <text x="820" y="254" class="small">catalog, orders, shipping</text>
+  <rect class="box" x="796" y="306" width="248" height="84"/>
+  <text x="820" y="340" class="label">Admin API</text>
+  <text x="820" y="366" class="small">sessions, CRUD, exports</text>
+  <rect class="box" x="796" y="418" width="248" height="84"/>
+  <text x="820" y="452" class="label">Middleware</text>
+  <text x="820" y="478" class="small">CSRF, limits, timeout</text>
+
+  <rect class="box external" x="228" y="584" width="176" height="42"/>
+  <text x="253" y="611" class="small">MercadoPago</text>
+  <rect class="box external" x="472" y="584" width="176" height="42"/>
+  <text x="521" y="611" class="small">PostgreSQL</text>
+  <rect class="box external" x="716" y="584" width="176" height="42"/>
+  <text x="764" y="611" class="small">Cloudflare R2</text>
+
+  <path class="line" d="M324 236 H436"/>
+  <path class="line" d="M324 348 H436"/>
+  <path class="line" d="M684 348 H796"/>
+  <path class="line" d="M684 236 H796"/>
+  <path class="muted" d="M920 278 C920 520 560 520 560 584"/>
+  <path class="muted" d="M920 278 C760 516 316 500 316 584"/>
+  <path class="muted" d="M920 348 C910 514 804 520 804 584"/>
+</svg>

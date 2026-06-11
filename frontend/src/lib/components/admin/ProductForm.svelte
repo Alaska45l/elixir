@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { apiFetch } from '$lib/api/client';
+  import { onMount } from 'svelte';
+  import { apiFetch, uploadAdminImage } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
   import type { ProductFormValue } from '$lib/types/product-form';
   import { slugify } from '$lib/utils/slug';
@@ -19,16 +20,38 @@
     heart_notes: [],
     base_notes: [],
     featured: false,
+    active: true,
     display_order: 0,
     variants: [{ size_ml: 50, price_ars_cents: 8900000, stock: 10, sku: '', weight_grams: 200 }],
     images: [{ url: '', alt_text: '', is_primary: true, sort_order: 0 }]
   };
 
-  let form: ProductFormValue = product ? structuredClone(product) : structuredClone(blank);
-  form.variants = form.variants.map((variant) => ({ ...variant, weight_grams: variant.weight_grams ?? 200 }));
+  function prepare(value: ProductFormValue) {
+    const next = structuredClone(value);
+    next.active = next.active ?? true;
+    next.variants = next.variants.map((variant) => ({ ...variant, weight_grams: variant.weight_grams ?? 200 }));
+    return next;
+  }
+
+  let form: ProductFormValue = prepare(product ?? blank);
   let notes = { top: '', heart: '', base: '' };
   let error = '';
   let saving = false;
+  let deleting = false;
+  let loading = Boolean(id && !product);
+  let uploadingImageIndex: number | null = null;
+
+  onMount(async () => {
+    if (!id || product) return;
+    try {
+      const data = await apiFetch<{ active?: boolean; product: ProductFormValue }>(`/api/admin/products/${id}`);
+      form = prepare({ ...data.product, active: data.product.active ?? data.active ?? true });
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'No se pudo cargar el producto';
+    } finally {
+      loading = false;
+    }
+  });
 
   function nameInput() {
     if (!form.slug) form.slug = slugify(form.name);
@@ -56,8 +79,32 @@
   function setPrimary(index: number) {
     form.images = form.images.map((img, i) => ({ ...img, is_primary: i === index }));
   }
+  async function uploadImage(event: Event, index: number) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    error = '';
+    uploadingImageIndex = index;
+    try {
+      const url = await uploadAdminImage(file, 'products');
+      form.images = form.images.map((image, i) => i === index ? { ...image, url, alt_text: image.alt_text || form.name } : image);
+      toast.push('Imagen subida como WebP');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo subir la imagen';
+      error = message;
+      toast.push(message, 'error');
+    } finally {
+      uploadingImageIndex = null;
+      input.value = '';
+    }
+  }
   async function save() {
     error = '';
+    if (uploadingImageIndex !== null) {
+      error = 'Esperá a que termine la carga de imagen.';
+      return;
+    }
     saving = true;
     if (!form.name.trim() || !form.slug.trim()) {
       error = 'Completá nombre y slug.';
@@ -89,16 +136,23 @@
   }
   async function deleteProduct() {
     if (!id || !confirm('¿Eliminar este producto?')) return;
+    deleting = true;
+    error = '';
     try {
       await apiFetch(`/api/admin/products/${id}`, { method: 'DELETE' });
       toast.push('Producto eliminado');
       location.href = '/admin/productos';
     } catch (err) {
       error = err instanceof Error ? err.message : 'No se pudo eliminar el producto';
+    } finally {
+      deleting = false;
     }
   }
 </script>
 
+{#if loading}
+  <p class="empty">Cargando producto...</p>
+{:else}
 <form class="form" on:submit|preventDefault={save}>
   <div class="grid-2">
     <label class="field"><span>Nombre comercial</span><input class="input" required bind:value={form.name} on:input={nameInput} /><small>Nombre visible en catálogo, carrito y orden.</small></label>
@@ -112,7 +166,10 @@
     <label class="field"><span>Concentración</span><select class="select" bind:value={form.concentration}><option>Extrait de Parfum</option><option>EDP</option><option>EDT</option><option>EDC</option></select></label>
     <label class="field"><span>Orden de aparición</span><input class="input" type="number" bind:value={form.display_order} /></label>
   </div>
-  <label class="check"><input type="checkbox" bind:checked={form.featured} /> Fragancia destacada</label>
+  <div class="checks">
+    <label class="check"><input type="checkbox" bind:checked={form.featured} /> Fragancia destacada</label>
+    <label class="check"><input type="checkbox" bind:checked={form.active} /> Publicada en la tienda</label>
+  </div>
 
   <section class="panel">
     <h2>Notas olfativas</h2>
@@ -141,12 +198,16 @@
 
   <section class="panel">
     <div class="row-head"><h2>Imágenes</h2><button class="btn" type="button" on:click={addImage}>+</button></div>
-    <p class="hint">Pegá enlaces públicos HTTPS de imágenes ya subidas. El proyecto todavía no tiene almacenamiento durable conectado para subir archivos desde el panel.</p>
+    <p class="hint">Subí una imagen o pegá una URL pública HTTPS.</p>
     {#if form.images.length === 0}<p class="empty">Agregá una imagen principal para que el producto se vea en el catálogo.</p>{/if}
     {#each form.images as image, i}
       <div class="image-row">
-        {#if image.url}<img src={image.url} alt={image.alt_text} />{/if}
+        <div class="image-preview">{#if image.url}<img src={image.url} alt={image.alt_text} />{/if}</div>
         <input class="input" bind:value={image.url} placeholder="https://..." title="Pegá una URL pública HTTPS." />
+        <label class:disabled={uploadingImageIndex !== null} class="upload-control">
+          <span>{uploadingImageIndex === i ? 'Subiendo...' : 'Subir'}</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadingImageIndex !== null} on:change={(event) => uploadImage(event, i)} />
+        </label>
         <input class="input" bind:value={image.alt_text} placeholder="Texto alternativo" />
         <label><input type="radio" name="primary" checked={image.is_primary} on:change={() => setPrimary(i)} /> Principal</label>
         <button type="button" on:click={() => form.images = form.images.filter((_, index) => index !== i)}>×</button>
@@ -156,15 +217,17 @@
 
   <div class="actions">
     {#if error}<p class="error">{error}</p>{/if}
-    <button class="btn primary" type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar producto'}</button>
-    {#if id}<button class="btn danger" type="button" on:click={deleteProduct}>Eliminar</button>{/if}
+    <button class="btn primary" type="submit" disabled={saving || deleting || uploadingImageIndex !== null}>{saving ? 'Guardando...' : 'Guardar producto'}</button>
+    {#if id}<button class="btn danger" type="button" disabled={saving || deleting} on:click={deleteProduct}>{deleting ? 'Eliminando...' : 'Eliminar'}</button>{/if}
   </div>
 </form>
+{/if}
 
 <style>
   .form { display: grid; gap: 22px; max-width: 980px; }
   .panel { border-top: 1px solid var(--color-border); padding-top: 22px; display: grid; gap: 14px; }
   h2 { margin: 0; font-size: 1rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .12em; }
+  .checks { display: flex; flex-wrap: wrap; gap: 16px; }
   .check { color: var(--color-text-muted); display: flex; gap: 10px; }
   .tags { display: flex; flex-wrap: wrap; gap: 8px; }
   .tags button, .variant-row button, .image-row button { border: 1px solid var(--color-border); color: var(--color-text); background: transparent; min-height: 36px; }
@@ -173,10 +236,14 @@
   .hint, .empty { margin: 0; color: var(--color-text-muted); }
   .compact { gap: 5px; }
   .variant-row { display: grid; grid-template-columns: 80px 130px 90px 90px 1fr 44px; gap: 10px; align-items: end; }
-  .image-row { display: grid; grid-template-columns: 72px 1fr 1fr 120px 44px; gap: 10px; align-items: center; }
-  .image-row img { width: 72px; height: 72px; object-fit: cover; }
+  .image-row { display: grid; grid-template-columns: 72px minmax(180px, 1fr) 108px minmax(160px, 1fr) 120px 44px; gap: 10px; align-items: center; }
+  .image-preview { width: 72px; height: 72px; border: 1px solid var(--color-border); background: rgba(255,255,255,.03); }
+  .image-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .upload-control { min-height: 46px; padding: 0 14px; border: 1px solid var(--color-border); color: var(--color-text); display: inline-flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer; white-space: nowrap; }
+  .upload-control input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-control.disabled { opacity: .55; pointer-events: none; }
   .actions { display: flex; gap: 12px; }
   .error { color: var(--color-danger-soft); margin: 0; align-self: center; }
-  .danger { border-color: #9f5d55; color: #e0a39a; }
+  .danger { border-color: var(--color-danger-soft); color: var(--color-danger-soft); }
   @media (max-width: 800px) { .variant-row, .image-row { grid-template-columns: 1fr; } }
 </style>

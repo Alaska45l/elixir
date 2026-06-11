@@ -50,12 +50,15 @@ func (p CorreoArgentinoProvider) Quote(ctx context.Context, req QuoteRequest) ([
 	if strings.TrimSpace(p.APIKey) == "" || strings.TrimSpace(p.ClientID) == "" {
 		return nil, ErrProviderUnavailable
 	}
-	body, _ := json.Marshal(map[string]any{
+	body, err := json.Marshal(map[string]any{
 		"origin_postal_code":      p.OriginPostalCode,
 		"destination_postal_code": req.DestinationPostalCode,
 		"weight_grams":            req.WeightGrams,
 		"dimensions":              req.Dimensions,
 	})
+	if err != nil {
+		return nil, err
+	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, correoArgentinoRatesURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -107,7 +110,7 @@ func (p *AndreaniProvider) Quote(ctx context.Context, req QuoteRequest) ([]Quote
 	if err != nil {
 		return nil, err
 	}
-	body, _ := json.Marshal(map[string]any{
+	body, err := json.Marshal(map[string]any{
 		"codigoPostalOrigen":  p.OriginPostalCode,
 		"codigoPostalDestino": req.DestinationPostalCode,
 		"peso":                req.WeightGrams,
@@ -116,6 +119,9 @@ func (p *AndreaniProvider) Quote(ctx context.Context, req QuoteRequest) ([]Quote
 		"largo":               req.Dimensions.LengthCM,
 		"cliente":             p.ClientID,
 	})
+	if err != nil {
+		return nil, err
+	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, andreaniQuoteURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -218,13 +224,21 @@ func quoteOptionsFromResponse(raw map[string]any, carrierName, idPrefix string) 
 			continue
 		}
 		id := strings.ToLower(strings.ReplaceAll(service, " ", "-"))
+		minDays := firstInt(item, "estimated_days_min", "estimatedDaysMin", "diasMin", "plazoMinimo")
+		maxDays := firstInt(item, "estimated_days_max", "estimatedDaysMax", "diasMax", "plazoMaximo")
+		if minDays < 0 {
+			minDays = 0
+		}
+		if maxDays < minDays {
+			maxDays = minDays
+		}
 		options = append(options, QuoteOption{
 			ID:               fmt.Sprintf("%s-%d-%s", idPrefix, i+1, id),
 			CarrierName:      firstNonEmpty(firstString(item, "carrier_name", "carrierName", "carrier"), carrierName),
 			ServiceName:      service,
 			PriceCents:       price,
-			EstimatedDaysMin: firstInt(item, "estimated_days_min", "estimatedDaysMin", "diasMin", "plazoMinimo"),
-			EstimatedDaysMax: firstInt(item, "estimated_days_max", "estimatedDaysMax", "diasMax", "plazoMaximo"),
+			EstimatedDaysMin: minDays,
+			EstimatedDaysMax: maxDays,
 		})
 	}
 	return options

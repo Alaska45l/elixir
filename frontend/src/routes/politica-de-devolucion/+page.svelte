@@ -18,5 +18,5 @@
 <style>
   .policy { max-width: 860px; }
   .copy { color: var(--color-text-muted); font-size: 1.05rem; line-height: 1.8; }
-  .copy :global(a) { color: var(--color-gold); }
+  .copy :global(a) { color: var(--color-emerald-dark); }
 </style>

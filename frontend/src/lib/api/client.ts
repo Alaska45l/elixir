@@ -1,4 +1,5 @@
-import { env } from '$env/dynamic/public';
+import { browser } from '$app/environment';
+import { PUBLIC_API_URL } from '$env/static/public';
 
 export type Variant = {
   id: string;
@@ -45,6 +46,8 @@ export type HomepageSettings = {
   hero_heading: string;
   hero_subheading: string;
   hero_image_url: string;
+  hero_image_mode: 'static' | 'product_covers';
+  hero_rotation_interval_ms: number;
   hero_cta_label: string;
   hero_cta_url: string;
   editorial_heading: string;
@@ -125,27 +128,99 @@ export type ShippingQuoteOption = {
   estimated_days_max: number;
 };
 
-export type ListResponse<T> = { items: T[]; total?: number; limit?: number; offset?: number };
+export type ListResponse<T> = { items: T[]; total?: number; limit?: number; offset?: number; error?: string };
+
+const DEFAULT_TIMEOUT_MS = 15000;
+
+async function responseError(res: Response): Promise<Error> {
+  const text = await res.text();
+  let message = '';
+  try {
+    const body = JSON.parse(text) as { error?: string };
+    message = body.error ?? '';
+  } catch {
+    message = text;
+  }
+  if (!message) {
+    switch (res.status) {
+      case 401:
+        message = 'Sesión expirada. Iniciá sesión nuevamente.';
+        break;
+      case 403:
+        message = 'No tenés permisos para realizar esta acción.';
+        break;
+      case 404:
+        message = 'No encontramos el recurso solicitado.';
+        break;
+      default:
+        message = res.status >= 500 ? 'Servicio temporalmente no disponible' : 'No se pudo completar la operación';
+    }
+  }
+  return new Error(message);
+}
+
+function apiBase(path: string): string {
+  const configuredBase = PUBLIC_API_URL.trim();
+  const shouldUseSameOriginProxy = browser && path.startsWith('/api/');
+  return shouldUseSameOriginProxy || path.startsWith('/api/admin') ? '' : configuredBase;
+}
 
 export async function apiFetch<T>(path: string, init?: RequestInit, fetcher: typeof fetch = fetch): Promise<T> {
-  const base = env.PUBLIC_API_URL ?? 'http://localhost:8080';
-  const res = await fetcher(`${base}${path}`, {
+  const controller = init?.signal ? null : new AbortController();
+  const timeout = controller ? setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS) : undefined;
+  let res: Response;
+  try {
+    res = await fetcher(`${apiBase(path)}${path}`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+      ...init,
+      signal: init?.signal ?? controller?.signal
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('La solicitud tardó demasiado. Intentá nuevamente.');
+    }
+    throw new Error('No se pudo conectar con el servicio. Intentá nuevamente.');
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+  if (!res.ok) {
+    const err = await responseError(res);
+    if (browser && res.status === 401 && path.startsWith('/api/admin') && !path.includes('/login')) {
+      window.location.assign('/admin/login');
+    }
+    throw err;
+  }
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  const text = await res.text();
+  try {
+    return (text ? JSON.parse(text) : undefined) as T;
+  } catch {
+    throw new Error('La respuesta del servicio no es válida.');
+  }
+}
+
+export async function uploadAdminImage(file: File, folder = 'products', fetcher: typeof fetch = fetch): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('folder', folder);
+
+  const path = '/api/admin/upload';
+  const res = await fetcher(`${apiBase(path)}${path}`, {
+    method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    ...init
+    body: form
   });
   if (!res.ok) {
-    const text = await res.text();
-    let message = '';
-    try {
-      const body = JSON.parse(text) as { error?: string };
-      message = body.error ?? '';
-    } catch {
-      message = text;
-    }
-    throw new Error(message || 'No se pudo completar la operación');
+    throw await responseError(res);
   }
-  return (await res.json()) as T;
+  const data = (await res.json()) as { url?: string };
+  if (!data.url) {
+    throw new Error('La subida no devolvió una URL');
+  }
+  return data.url;
 }
 
 export async function getProducts(fetcher: typeof fetch = fetch, query = ''): Promise<Product[]> {
@@ -157,7 +232,7 @@ export async function getProductsResponse(fetcher: typeof fetch = fetch, query =
     const data = await apiFetch<ListResponse<Product>>(`/api/products${query}`, undefined, fetcher);
     return data;
   } catch {
-    return { items: demoProducts, total: demoProducts.length, limit: demoProducts.length, offset: 0 };
+    return { items: [], total: 0, error: 'No pudimos cargar el catálogo.' };
   }
 }
 
@@ -165,14 +240,14 @@ export async function getProduct(slug: string, fetcher: typeof fetch = fetch): P
   try {
     return await apiFetch<Product>(`/api/products/${slug}`, undefined, fetcher);
   } catch {
-    return demoProducts.find((p) => p.slug === slug) ?? null;
+    return null;
   }
 }
 
 export async function getHomepage(fetcher: typeof fetch = fetch): Promise<HomepageSettings> {
   try {
     const data = await apiFetch<HomepageSettings>('/api/homepage', undefined, fetcher);
-    return data.hero_heading ? data : defaultHomepage;
+    return data.hero_heading ? { ...defaultHomepage, ...data } : defaultHomepage;
   } catch {
     return defaultHomepage;
   }
@@ -209,13 +284,15 @@ export async function quoteShipping(req: ShippingQuoteRequest): Promise<Shipping
 }
 
 export const defaultHomepage: HomepageSettings = {
-  hero_heading: 'Perfumería argentina de gesto privado',
-  hero_subheading: 'Fragancias intensas, precisas y comerciales, curadas para noches largas, hoteles silenciosos y piel con presencia.',
+  hero_heading: 'Perfumería selecta con entrega nacional',
+  hero_subheading: 'Fragancias originales, asesoramiento privado y despacho cuidado desde Buenos Aires.',
   hero_image_url: 'https://images.unsplash.com/photo-1619994403073-2cec844b8e63?auto=format&fit=crop&w=1200&q=85',
+  hero_image_mode: 'product_covers',
+  hero_rotation_interval_ms: 8000,
   hero_cta_label: 'Catálogo',
   hero_cta_url: '/fragrances',
-  editorial_heading: 'Una firma de baja voz',
-  editorial_body: 'ELIXIR Exclusive trabaja familias olfativas densas y modernas: maderas limpias, ámbar seco, flores oscuras y cítricos fríos. Cada compra se prepara con empaque sobrio y seguimiento personalizado.',
+  editorial_heading: 'Selección curada',
+  editorial_body: 'Elegimos perfumes con trazabilidad, buena performance y una experiencia de compra sobria de punta a punta.',
   editorial_image_url: 'https://images.unsplash.com/photo-1595425970377-c9703cf48b6f?auto=format&fit=crop&w=1000&q=85'
 };
 
@@ -237,49 +314,9 @@ export const defaultSettings: SiteSettings = {
   ],
   return_policy_html: '<p>Los cambios se revisan caso por caso con el producto cerrado, sin uso y dentro de los plazos informados por atención al cliente.</p>',
   navbar_product_categories: [
+    { label: 'Fragancias Unisex', href: '/fragrances?gender=Unisex' },
     { label: 'Fragancias Masculinas', href: '/fragrances?gender=Masculino' },
-    { label: 'Fragancias Femeninas', href: '/fragrances?gender=Femenino' },
-    { label: 'Línea Oriental', href: '/fragrances?family=Oriental' },
-    { label: 'Línea Amaderada', href: '/fragrances?family=Amaderado' }
+    { label: 'Fragancias Femeninas', href: '/fragrances?gender=Femenino' }
   ],
   low_stock_threshold: 5
 };
-
-export const demoProducts: Product[] = [
-  makeProduct('nocturno-oud', 'Nocturno Oud', 'Oud seco, rosa negra y cuero limpio', 'Amaderado', 8900000, 4, 'https://images.unsplash.com/photo-1541643600914-78b084683702?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('ambar-de-recoleta', 'Ámbar de Recoleta', 'Ámbar cálido, vainilla sobria y incienso', 'Oriental', 7600000, 12, 'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('flor-de-noche', 'Flor de Noche', 'Jazmín oscuro, iris y almizcle limpio', 'Floral', 8200000, 3, 'https://images.unsplash.com/photo-1616604426203-b9baf4ac29d2?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('citrino-frio', 'Citrino Frío', 'Bergamota helada, neroli y cedro blanco', 'Cítrico', 6900000, 8, 'https://images.unsplash.com/photo-1609541657971-7a22e8e76219?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('gourmand-reserva', 'Gourmand Reserva', 'Tonka, cacao amargo y sándalo', 'Gourmand', 9300000, 2, 'https://images.unsplash.com/photo-1590736969955-71cc94901144?auto=format&fit=crop&w=900&q=90'),
-  makeProduct('fresco-sur', 'Fresco Sur', 'Mate verde, pomelo y vetiver', 'Fresco', 7100000, 0, 'https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=900&q=90')
-];
-
-function makeProduct(slug: string, name: string, tagline: string, family: string, price: number, stock: number, image: string): Product {
-  const id = slug;
-  return {
-    id,
-    slug,
-    name,
-    tagline,
-    description: `${tagline}. Una composición de alta permanencia pensada para piel y clima urbano argentino.`,
-    scent_family: family,
-    gender_tag: 'Unisex',
-    concentration: 'EDP',
-    top_notes: ['Bergamota', 'Pimienta rosa', 'Azafrán'],
-    heart_notes: ['Rosa', 'Iris', 'Incienso'],
-    base_notes: ['Sándalo', 'Ámbar', 'Almizcle'],
-    featured: true,
-    active: true,
-    display_order: 0,
-    variants: [
-      { id: `${slug}-50`, product_id: id, size_ml: 50, price_ars_cents: price, stock, sku: `${slug.toUpperCase()}-50`, active: true, weight_grams: 200 },
-      { id: `${slug}-100`, product_id: id, size_ml: 100, price_ars_cents: Math.round(price * 1.65), stock, sku: `${slug.toUpperCase()}-100`, active: true, weight_grams: 320 }
-    ],
-    images: [
-      { id: `${slug}-1`, product_id: id, url: image, alt_text: name, is_primary: true, sort_order: 0 },
-      { id: `${slug}-2`, product_id: id, url: image.replace('w=900', 'w=901'), alt_text: `${name} detalle`, is_primary: false, sort_order: 1 }
-    ],
-    min_price_ars_cents: price,
-    total_stock: stock
-  };
-}

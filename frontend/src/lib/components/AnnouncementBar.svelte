@@ -11,8 +11,8 @@
 
 <style>
   .bar {
-    background: var(--color-gold);
-    color: var(--color-bg);
+    background: var(--color-emerald);
+    color: #FDF8F0;
     text-align: center;
     padding: 9px 16px;
     font-size: 0.72rem;

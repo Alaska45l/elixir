@@ -96,6 +96,54 @@ func TestNormalizeDiscountPayload(t *testing.T) {
 	}
 }
 
+func TestNormalizeHomepagePayloadDefaultsHeroRotation(t *testing.T) {
+	req := homepageRequest{
+		HeroHeading:       " Perfumería argentina ",
+		HeroImageURL:      "https://example.com/hero.jpg",
+		HeroCTALabel:      "Catálogo",
+		HeroCTAURL:        "/fragrances",
+		EditorialImageURL: "https://example.com/editorial.jpg",
+	}
+
+	if err := normalizeHomepagePayload(&req); err != nil {
+		t.Fatalf("expected valid homepage: %v", err)
+	}
+	if req.HeroHeading != "Perfumería argentina" {
+		t.Fatalf("expected heading trim, got %q", req.HeroHeading)
+	}
+	if req.HeroImageMode != defaultHeroImageMode {
+		t.Fatalf("expected default hero image mode, got %q", req.HeroImageMode)
+	}
+	if req.HeroRotationIntervalMS != defaultHeroRotationIntervalMS {
+		t.Fatalf("expected default hero interval, got %d", req.HeroRotationIntervalMS)
+	}
+}
+
+func TestNormalizeHomepagePayloadRejectsHeroRotationInputs(t *testing.T) {
+	cases := []homepageRequest{
+		{
+			HeroHeading:            "Hero",
+			HeroImageURL:           "https://example.com/hero.jpg",
+			HeroImageMode:          "unknown",
+			HeroRotationIntervalMS: defaultHeroRotationIntervalMS,
+			EditorialImageURL:      "https://example.com/editorial.jpg",
+		},
+		{
+			HeroHeading:            "Hero",
+			HeroImageURL:           "https://example.com/hero.jpg",
+			HeroImageMode:          "product_covers",
+			HeroRotationIntervalMS: 500,
+			EditorialImageURL:      "https://example.com/editorial.jpg",
+		},
+	}
+
+	for _, tc := range cases {
+		if err := normalizeHomepagePayload(&tc); err == nil {
+			t.Fatalf("expected homepage validation error for %#v", tc)
+		}
+	}
+}
+
 func TestValidatePassword(t *testing.T) {
 	if err := validatePassword("abc1234567", "admin"); err != nil {
 		t.Fatalf("expected valid password: %v", err)

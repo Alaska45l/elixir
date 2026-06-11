@@ -88,8 +88,8 @@
   .empty-box { display: grid; gap: 12px; border-top: 1px solid var(--color-border); padding-top: 22px; max-width: 560px; }
   .empty-box h2 { margin: 0; }
   .empty-box p, td span { color: var(--color-text-muted); }
-  .switch { min-width: 104px; height: 34px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--color-border); background: rgba(232,224,208,.06); color: var(--color-text-muted); padding: 2px 10px 2px 2px; }
+  .switch { min-width: 104px; height: 34px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--color-border); background: rgba(45,42,36,.04); color: var(--color-text-muted); padding: 2px 10px 2px 2px; }
   .switch span { display: block; width: 28px; height: 28px; background: var(--color-text-muted); transition: background .2s ease; }
   .switch.on { color: var(--color-text); }
-  .switch.on span { background: var(--color-gold); }
+  .switch.on span { background: var(--color-emerald); }
 </style>

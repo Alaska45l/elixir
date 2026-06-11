@@ -45,7 +45,10 @@ func (c MercadoPagoClient) CreatePreference(ctx context.Context, order OrderForP
 		"notification_url": c.BackendURL + "/api/payments/mercadopago/webhook",
 		"binary_mode":      false,
 	}
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return PreferenceResponse{}, err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.mercadopago.com/checkout/preferences", bytes.NewReader(body))
 	if err != nil {
 		return PreferenceResponse{}, err

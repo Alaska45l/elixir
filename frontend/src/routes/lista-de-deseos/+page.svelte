@@ -15,7 +15,12 @@
   });
 </script>
 
-<svelte:head><title>Mi lista de deseos | ELIXIR Exclusive</title></svelte:head>
+<svelte:head>
+  <title>Mi lista de deseos | ELIXIR Exclusive</title>
+  <meta name="description" content="Guardá tus fragancias favoritas de ELIXIR Exclusive para volver a consultarlas rápidamente." />
+  <meta property="og:title" content="Mi lista de deseos | ELIXIR Exclusive" />
+  <meta property="og:description" content="Fragancias favoritas guardadas para comparar y comprar después." />
+</svelte:head>
 
 <section class="container page-pad">
   <p class="eyebrow">Mi lista de deseos</p>

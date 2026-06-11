@@ -10,6 +10,6 @@
 
 <style>
   .toasts { position: fixed; right: 18px; bottom: 18px; display: grid; gap: 10px; z-index: 60; }
-  .toasts div { background: var(--color-surface); border: 1px solid var(--color-gold); color: var(--color-text); padding: 12px 14px; min-width: 240px; }
-  .toasts div.error { border-color: #b66; }
+  .toasts div { background: var(--color-surface); border: 1px solid var(--color-emerald); color: var(--color-text); padding: 12px 14px; min-width: 240px; }
+  .toasts div.error { border-color: var(--color-danger-soft); }
 </style>

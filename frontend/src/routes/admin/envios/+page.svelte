@@ -23,6 +23,7 @@
   let form: ZoneForm = blank();
   let loading = true;
   let saving = false;
+  let deletingId = '';
   let error = '';
 
   async function load() {
@@ -79,13 +80,17 @@
   }
 
   async function deactivate(zone: ZoneForm) {
-    if (!confirm(`¿Desactivar la zona ${zone.zone_name}?`)) return;
+    if (deletingId || !confirm(`¿Desactivar la zona ${zone.zone_name}?`)) return;
+    deletingId = zone.id;
+    error = '';
     try {
       await apiFetch(`/api/admin/shipping/zones/${zone.id}`, { method: 'DELETE' });
       toast.push('Zona desactivada');
       await load();
     } catch (err) {
       error = err instanceof Error ? err.message : 'No se pudo desactivar la zona';
+    } finally {
+      deletingId = '';
     }
   }
 
@@ -133,8 +138,8 @@
             </div>
             <span>{formatARS(zone.base_cost_cents)}{zone.per_kg_cents ? ` + ${formatARS(zone.per_kg_cents)}/kg` : ''}</span>
             <span class:ok={zone.active}>{zone.active ? 'Activa' : 'Inactiva'}</span>
-            <button class="btn" type="button" on:click={() => edit(zone)}>Editar</button>
-            {#if zone.active}<button class="btn danger" type="button" on:click={() => deactivate(zone)}>Desactivar</button>{/if}
+            <button class="btn" type="button" disabled={Boolean(deletingId)} on:click={() => edit(zone)}>Editar</button>
+            {#if zone.active}<button class="btn danger" type="button" disabled={Boolean(deletingId)} on:click={() => deactivate(zone)}>{deletingId === zone.id ? 'Desactivando...' : 'Desactivar'}</button>{/if}
           </article>
         {/each}
       </div>
@@ -156,7 +161,7 @@
   article.inactive { opacity: .65; }
   article div { display: grid; gap: 5px; }
   article span { color: var(--color-text-muted); }
-  .ok { color: var(--color-gold); }
-  .danger { border-color: #9f5d55; color: #e0a39a; }
+  .ok { color: var(--color-emerald-dark); }
+  .danger { border-color: var(--color-danger-soft); color: var(--color-danger-soft); }
   @media (max-width: 980px) { .layout, article { grid-template-columns: 1fr; } }
 </style>

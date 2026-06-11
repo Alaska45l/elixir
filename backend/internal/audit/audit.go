@@ -20,7 +20,11 @@ func Log(ctx context.Context, pool *pgxpool.Pool, e Event) {
 	if pool == nil || e.ActorUsername == "" || e.Action == "" {
 		return
 	}
-	metadata, _ := json.Marshal(e.Metadata)
+	metadata, err := json.Marshal(e.Metadata)
+	if err != nil {
+		slog.Error("audit metadata marshal failed", "error", err)
+		metadata = []byte("{}")
+	}
 	go func() {
 		logCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()

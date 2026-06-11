@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { env } from '$env/dynamic/public';
+  import { PUBLIC_WHATSAPP_NUMBER } from '$env/static/public';
   import { onMount } from 'svelte';
   import { apiFetch } from '$lib/api/client';
   import type { Order } from '$lib/api/client';
@@ -7,20 +7,31 @@
   import type { PageData } from './$types';
   export let data: PageData;
   let order: Order | null = data.order;
+  let refreshError = '';
   onMount(() => {
     if (order?.status !== 'pending') return;
     let count = 0;
     const timer = setInterval(async () => {
       count += 1;
-      order = await apiFetch<Order>(`/api/orders/${data.ref}`);
-      if (order.status !== 'pending' || count >= 24) clearInterval(timer);
+      try {
+        order = await apiFetch<Order>(`/api/orders/${data.ref}`);
+        refreshError = '';
+      } catch (err) {
+        refreshError = err instanceof Error ? err.message : 'No pudimos actualizar la orden';
+      }
+      if (order?.status !== 'pending' || count >= 24) clearInterval(timer);
     }, 5000);
     return () => clearInterval(timer);
   });
   $: status = order?.status ?? 'pending';
 </script>
 
-<svelte:head><title>Ver orden | ELIXIR Exclusive</title></svelte:head>
+<svelte:head>
+  <title>Ver orden | ELIXIR Exclusive</title>
+  <meta name="description" content="Consultá el estado de tu orden en ELIXIR Exclusive." />
+  <meta property="og:title" content="Ver orden | ELIXIR Exclusive" />
+  <meta property="og:description" content="Seguimiento del pago y estado de preparación de la compra." />
+</svelte:head>
 
 <section class="container page-pad confirmation">
   {#if status === 'paid'}
@@ -33,13 +44,15 @@
   {#if order}
     <div class="summary"><span>Total</span><strong>{formatARS(order.total_ars_cents)}</strong><span>Estado</span><strong>{order.status}</strong></div>
   {/if}
-  <a class="btn" href={`https://wa.me/${env.PUBLIC_WHATSAPP_NUMBER ?? '5491100000000'}?text=${encodeURIComponent(`Hola, consulto por la orden ${data.ref}`)}`} target="_blank" rel="noreferrer">Consultar por WhatsApp</a>
+  {#if refreshError}<p class="error">{refreshError}</p>{/if}
+  <a class="btn" href={`https://wa.me/${PUBLIC_WHATSAPP_NUMBER || '5491100000000'}?text=${encodeURIComponent(`Hola, consulto por la orden ${data.ref}`)}`} target="_blank" rel="noreferrer">Consultar por WhatsApp</a>
 </section>
 
 <style>
   .confirmation { max-width: 760px; text-align: center; display: grid; justify-items: center; gap: 20px; }
-  .icon { width: 72px; height: 72px; border: 1px solid var(--color-gold); color: var(--color-gold); display: grid; place-items: center; font-size: 2rem; }
+  .icon { width: 72px; height: 72px; border: 1px solid var(--color-emerald); color: var(--color-emerald); display: grid; place-items: center; font-size: 2rem; }
   .icon.error { border-color: #b66; color: #e0a39a; }
+  .error { color: var(--color-danger-soft); }
   h1 { font-size: clamp(3rem, 7vw, 6rem); line-height: .92; margin: 0; }
   p { color: var(--color-text-muted); line-height: 1.7; }
   .summary { width: min(420px, 100%); border-top: 1px solid var(--color-border); padding-top: 18px; display: grid; grid-template-columns: 1fr auto; gap: 10px; text-align: left; }

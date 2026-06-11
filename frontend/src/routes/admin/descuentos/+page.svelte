@@ -42,6 +42,7 @@
   let form = blank();
   let loading = true;
   let saving = false;
+  let deletingId = '';
   let error = '';
 
   async function load() {
@@ -100,13 +101,17 @@
   }
 
   async function remove(row: Discount) {
-    if (!confirm(`¿Eliminar el cupón ${row.code}?`)) return;
+    if (deletingId || !confirm(`¿Eliminar el cupón ${row.code}?`)) return;
+    deletingId = row.id;
+    error = '';
     try {
       await apiFetch(`/api/admin/discounts/${row.id}`, { method: 'DELETE' });
       toast.push('Descuento eliminado');
       await load();
     } catch (err) {
       error = err instanceof Error ? err.message : 'No se pudo eliminar el descuento';
+    } finally {
+      deletingId = '';
     }
   }
 
@@ -152,7 +157,7 @@
           <td>{formatARS(row.min_order_cents)}</td>
           <td>{row.uses}{row.max_uses ? ` / ${row.max_uses}` : ''}</td>
           <td>{row.active ? 'Activo' : 'Inactivo'}</td>
-          <td class="row-actions"><button class="btn" type="button" on:click={() => edit(row)}>Editar</button><button class="btn danger" type="button" on:click={() => remove(row)}>Eliminar</button></td>
+          <td class="row-actions"><button class="btn" type="button" disabled={Boolean(deletingId)} on:click={() => edit(row)}>Editar</button><button class="btn danger" type="button" disabled={Boolean(deletingId)} on:click={() => remove(row)}>{deletingId === row.id ? 'Eliminando...' : 'Eliminar'}</button></td>
         </tr>
       {/each}
     </tbody>

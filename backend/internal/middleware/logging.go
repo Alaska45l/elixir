@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"log/slog"
-	"net"
 	"net/http"
 	"time"
 
@@ -39,10 +38,7 @@ func RequestLogger(next http.Handler) http.Handler {
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
 		start := time.Now()
 		next.ServeHTTP(sw, r.WithContext(ctx))
-		remoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
-		if remoteIP == "" {
-			remoteIP = r.RemoteAddr
-		}
+		remoteIP := requestIP(r)
 		args := []any{"id", id, "method", r.Method, "path", r.URL.Path, "status", sw.status, "duration_ms", time.Since(start).Milliseconds(), "size", sw.size, "remote_ip", remoteIP, "user_agent", r.UserAgent()}
 		if sw.status >= 500 {
 			slog.Error("request", args...)

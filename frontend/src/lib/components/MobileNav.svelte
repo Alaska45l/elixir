@@ -6,10 +6,12 @@
   export let id = 'mobile-nav';
   export let open = false;
   export let settings: SiteSettings;
+  export let productLinks: NavItem[] = [];
   export let contactLinks: NavItem[] = [];
   export let onClose: () => void = () => undefined;
 
   let expanded = 'productos';
+  $: productNavLinks = productLinks.length > 0 ? productLinks : settings.navbar_product_categories;
   $: instagramHref = settings.footer_instagram_url || 'https://www.instagram.com/';
   $: tiktokHref = settings.footer_tiktok_url || 'https://www.tiktok.com/';
 
@@ -40,7 +42,7 @@
     <li>
       <button class="group-trigger" type="button" aria-expanded={expanded === 'productos'} aria-controls="mobile-productos" on:click={() => toggle('productos')}>Productos</button>
       <div id="mobile-productos" class="children" class:expanded={expanded === 'productos'}>
-        {#each settings.navbar_product_categories as item}<a href={item.href} on:click={onClose}>{item.label}</a>{/each}
+        {#each productNavLinks as item}<a href={item.href} on:click={onClose}>{item.label}</a>{/each}
       </div>
     </li>
     <li>
@@ -166,7 +168,7 @@
 
   .group-trigger::after {
     content: '+';
-    color: var(--color-gold);
+    color: var(--color-emerald);
     font-family: var(--font-ui);
     font-size: 1.35rem;
   }
@@ -231,7 +233,7 @@
   .social-label {
     min-height: 0;
     padding: 20px 0 4px;
-    color: var(--color-gold);
+    color: var(--color-emerald-dark);
     font-size: .76rem;
     font-weight: 700;
     letter-spacing: .16em;
@@ -244,12 +246,12 @@
   }
 
   .social-link svg {
-    color: var(--color-gold);
+    color: var(--color-emerald);
     flex: 0 0 auto;
   }
 
   .children a:hover,
   .solo:hover {
-    color: var(--color-gold);
+    color: var(--color-emerald-dark);
   }
 </style>

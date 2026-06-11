@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { env } from '$env/dynamic/public';
   import { onMount } from 'svelte';
   import { apiFetch } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
@@ -54,7 +53,7 @@
     }
   }
   function exportCSV() {
-    window.open(`${env.PUBLIC_API_URL ?? 'http://localhost:8080'}/api/admin/orders/export`, '_blank');
+    window.open('/api/admin/orders/export', '_blank');
   }
   function label(status: string) {
     return statuses.find(([value]) => value === status)?.[1] ?? status;
@@ -165,7 +164,7 @@
   .info-grid section { border: 1px solid var(--color-border); padding: 14px; }
   h2 { margin: 0 0 8px; font-size: .78rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .12em; }
   .badge { justify-self: start; border: 1px solid var(--color-border); padding: 5px 10px; color: var(--color-text-muted); }
-  .badge.paid, .badge.shipped, .badge.delivered { color: var(--color-gold); border-color: color-mix(in srgb, var(--color-gold) 55%, transparent); }
+  .badge.paid, .badge.shipped, .badge.delivered { color: var(--color-emerald-dark); border-color: color-mix(in srgb, var(--color-emerald-dark) 55%, transparent); }
   .badge.failed, .badge.cancelled { color: var(--color-danger-soft); border-color: #9f5d55; }
   .totals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; color: var(--color-text-muted); }
   .totals span { border-top: 1px solid var(--color-border); padding-top: 10px; display: flex; justify-content: space-between; gap: 8px; }

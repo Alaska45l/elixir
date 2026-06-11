@@ -1,6 +1,7 @@
 package shipping
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -17,6 +18,7 @@ func (h Handler) Zones(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, r, http.StatusInternalServerError, "no se pudieron obtener los envíos")
 		return
 	}
+	w.Header().Set("Cache-Control", "public, max-age=300, stale-while-revalidate=600")
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": zones})
 }
 
@@ -32,7 +34,11 @@ func (h Handler) Quote(w http.ResponseWriter, r *http.Request) {
 	}
 	options, err := h.Service.Quote(r.Context(), req)
 	if err != nil {
-		httpx.Error(w, r, http.StatusInternalServerError, "no se pudo cotizar el envío")
+		status := http.StatusInternalServerError
+		if errors.Is(err, ErrInvalidQuoteRequest) {
+			status = http.StatusBadRequest
+		}
+		httpx.Error(w, r, status, "no se pudo cotizar el envío")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": options})

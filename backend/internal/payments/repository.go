@@ -3,6 +3,7 @@ package payments
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -60,17 +61,32 @@ func (r DBRepository) RecordPaymentAndUpdateOrder(ctx context.Context, payment P
 		var id string
 		if err := tx.QueryRow(ctx, `SELECT id FROM orders WHERE external_reference=$1`, payment.ExternalReference).Scan(&id); err == nil {
 			orderID = &id
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return err
 		}
 	}
-	raw, _ := json.Marshal(payment.Raw)
-	_, err = tx.Exec(ctx, `INSERT INTO payment_events (order_id, mp_payment_id, mp_preference_id, mp_status, mp_status_detail, raw_payload) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (mp_payment_id) DO NOTHING`,
+	raw, err := json.Marshal(payment.Raw)
+	if err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx, `INSERT INTO payment_events (order_id, mp_payment_id, mp_preference_id, mp_status, mp_status_detail, raw_payload) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (mp_payment_id) DO NOTHING`,
 		orderID, payment.ID, payment.PreferenceID, payment.Status, payment.StatusDetail, raw)
 	if err != nil {
 		return err
 	}
+	if tag.RowsAffected() == 0 {
+		return tx.Commit(ctx)
+	}
 	if orderID != nil {
 		status := mapStatus(payment.Status)
-		_, err = tx.Exec(ctx, `UPDATE orders SET status=$1, updated_at=now() WHERE id=$2`, status, *orderID)
+		_, err = tx.Exec(ctx, `
+			UPDATE orders
+			SET status=$1, updated_at=now()
+			WHERE id=$2 AND (
+				(status='pending' AND $1 IN ('paid','failed','cancelled')) OR
+				(status='paid' AND $1='paid') OR
+				(status=$1)
+			)`, status, *orderID)
 		if err != nil {
 			return err
 		}

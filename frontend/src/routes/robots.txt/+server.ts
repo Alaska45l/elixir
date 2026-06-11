@@ -1,8 +1,11 @@
-import { env } from '$env/dynamic/public';
+import { PUBLIC_SITE_URL } from '$env/static/public';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async () => new Response(`User-agent: *
+export const GET: RequestHandler = async ({ url }) => {
+  const siteUrl = (PUBLIC_SITE_URL || url.origin).replace(/\/$/, '');
+  return new Response(`User-agent: *
 Disallow: /admin
 Disallow: /api/
-Sitemap: ${env.PUBLIC_SITE_URL ?? 'http://localhost:5173'}/sitemap.xml
+Sitemap: ${siteUrl}/sitemap.xml
 `, { headers: { 'Content-Type': 'text/plain' } });
+};

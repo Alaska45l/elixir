@@ -8,7 +8,7 @@
 
 <style>
   .skel {
-    background: linear-gradient(90deg, var(--color-surface) 25%, rgba(232,224,208,.06) 50%, var(--color-surface) 75%);
+    background: linear-gradient(90deg, var(--color-surface) 25%, rgba(45,42,36,.04) 50%, var(--color-surface) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.6s ease-in-out infinite;
   }

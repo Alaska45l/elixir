@@ -44,9 +44,11 @@
 <style>
   .stepper {
     display: flex;
-    border: 1px solid var(--color-border);
     height: 46px;
     width: 120px;
+    background: rgba(45,42,36,0.04);
+    border-radius: 6px;
+    overflow: hidden;
   }
 
   .step-btn {
@@ -62,7 +64,7 @@
   }
 
   .step-btn:hover:not(:disabled) {
-    color: var(--color-gold);
+    color: var(--color-emerald-dark);
     background: var(--color-surface-hover);
   }
 
@@ -75,8 +77,7 @@
     flex: 1;
     display: grid;
     place-items: center;
-    border-left: 1px solid var(--color-border);
-    border-right: 1px solid var(--color-border);
+    background: rgba(45,42,36,0.06);
     overflow: hidden;
     position: relative;
   }

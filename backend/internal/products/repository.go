@@ -36,9 +36,6 @@ func (r Repository) List(ctx context.Context, f ListFilters) (ListResult, error)
 	if len(f.Genders) > 0 {
 		where = append(where, "p.gender_tag = ANY("+next(f.Genders)+")")
 	}
-	if len(f.Concentrations) > 0 {
-		where = append(where, "p.concentration = ANY("+next(f.Concentrations)+")")
-	}
 	if f.Search != "" {
 		where = append(where, "(p.name ILIKE "+next("%"+f.Search+"%")+" OR p.tagline ILIKE "+next("%"+f.Search+"%")+")")
 	}
@@ -51,16 +48,23 @@ func (r Repository) List(ctx context.Context, f ListFilters) (ListResult, error)
 	if f.MaxPrice > 0 {
 		where = append(where, "EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id=p.id AND v.active=true AND v.price_ars_cents <= "+next(f.MaxPrice)+")")
 	}
+	orderBy := "p.display_order ASC, p.created_at DESC"
+	switch f.Sort {
+	case "price_asc":
+		orderBy = "min_price_ars_cents ASC, p.display_order ASC, p.created_at DESC"
+	case "price_desc":
+		orderBy = "min_price_ars_cents DESC, p.display_order ASC, p.created_at DESC"
+	}
 	args = append(args, limit, f.Offset)
 	query := `
 	SELECT p.id, p.slug, p.name, COALESCE(p.tagline,''), COALESCE(p.description,''), COALESCE(p.scent_family,''), COALESCE(p.gender_tag,''), COALESCE(p.concentration,''),
 	       COALESCE(p.top_notes, '{}'), COALESCE(p.heart_notes, '{}'), COALESCE(p.base_notes, '{}'), p.featured, p.active, p.display_order, p.created_at, p.updated_at,
-	       COALESCE((SELECT MIN(price_ars_cents) FROM product_variants v WHERE v.product_id=p.id AND v.active=true), 0),
+	       COALESCE((SELECT MIN(price_ars_cents) FROM product_variants v WHERE v.product_id=p.id AND v.active=true), 0) AS min_price_ars_cents,
 	       COALESCE((SELECT SUM(stock) FROM product_variants v WHERE v.product_id=p.id AND v.active=true), 0),
 	       COUNT(*) OVER()
 	FROM products p
 	WHERE ` + strings.Join(where, " AND ") + `
-	ORDER BY p.display_order ASC, p.created_at DESC
+	ORDER BY ` + orderBy + `
 LIMIT $` + fmt.Sprint(len(args)-1) + ` OFFSET $` + fmt.Sprint(len(args))
 	rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {

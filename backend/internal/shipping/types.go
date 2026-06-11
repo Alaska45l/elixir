@@ -6,6 +6,7 @@ import (
 )
 
 var ErrProviderUnavailable = errors.New("shipping provider unavailable")
+var ErrInvalidQuoteRequest = errors.New("shipping quote request inválida")
 
 type Dimensions struct {
 	LengthCM int `json:"length_cm"`

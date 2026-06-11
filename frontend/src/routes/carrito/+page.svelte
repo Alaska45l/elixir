@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { env } from '$env/dynamic/public';
+  import { PUBLIC_WHATSAPP_NUMBER } from '$env/static/public';
   import { apiFetch, quoteShipping } from '$lib/api/client';
   import type { CartValidation, DiscountValidation, Order, ShippingQuoteOption } from '$lib/api/client';
+  import QuantityStepper from '$lib/components/QuantityStepper.svelte';
   import { cart, cartSubtotal } from '$lib/stores/cart';
   import { toast } from '$lib/stores/toast';
   import { formatARS } from '$lib/utils/currency';
@@ -16,6 +17,8 @@
   let shippingOptions: ShippingQuoteOption[] = [];
   let selectedShippingID = '';
   let quoting = false;
+  let checkingOut = false;
+  let error = '';
   const provinces = [
     ['C', 'Ciudad Autónoma de Buenos Aires'],
     ['B', 'Buenos Aires'],
@@ -47,21 +50,39 @@
   $: cartWeightGrams = $cart.reduce((sum, item) => sum + (item.weightGrams ?? 200) * item.quantity, 0);
   $: total = $cartSubtotal + shipping - discount;
   async function applyDiscount() {
-    const res = await apiFetch<DiscountValidation>('/api/discount/validate', { method: 'POST', body: JSON.stringify({ code: discountCode, subtotal_ars_cents: $cartSubtotal }) });
-    discount = res.valid ? res.discount_ars_cents : 0;
-    toast.push(res.valid ? 'Código aplicado' : res.message ?? 'Código inválido', res.valid ? 'ok' : 'error');
+    try {
+      const res = await apiFetch<DiscountValidation>('/api/discount/validate', { method: 'POST', body: JSON.stringify({ code: discountCode, subtotal_ars_cents: $cartSubtotal }) });
+      discount = res.valid ? res.discount_ars_cents : 0;
+      toast.push(res.valid ? 'Código aplicado' : res.message ?? 'Código inválido', res.valid ? 'ok' : 'error');
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : 'No se pudo validar el código', 'error');
+    }
   }
   async function abandoned() {
-    if (email && $cart.length) await apiFetch('/api/contact/abandoned-cart', { method: 'POST', body: JSON.stringify({ email, cart_data: { items: $cart } }) });
+    if (!email || !$cart.length) return;
+    try {
+      await apiFetch('/api/contact/abandoned-cart', { method: 'POST', body: JSON.stringify({ email, cart_data: { items: $cart } }) });
+    } catch {
+      // Best-effort recovery signal only.
+    }
   }
   async function checkout() {
+    error = '';
     if (!selectedShipping) { toast.push('Seleccioná una opción de envío', 'error'); return; }
-    const items = $cart.map((item) => ({ variant_id: item.variantId, quantity: item.quantity, unit_price_ars_cents: item.unitPriceCents }));
-    const validation = await apiFetch<CartValidation>('/api/cart/validate', { method: 'POST', body: JSON.stringify({ items }) });
-    if (!validation.valid) { toast.push(validation.errors.join('. '), 'error'); return; }
-    const order = await apiFetch<Order>('/api/orders', { method: 'POST', body: JSON.stringify({ items, customer_name: name, customer_email: email, customer_phone: phone, shipping_address: { address, province, postalCode, shipping_option: selectedShipping }, shipping_cost_ars_cents: shipping, discount_code: discountCode }) });
-    const pref = await apiFetch<{ init_point: string }>('/api/checkout/mercadopago/preference', { method: 'POST', body: JSON.stringify({ external_reference: order.external_reference }) });
-    location.href = pref.init_point;
+    checkingOut = true;
+    try {
+      const items = $cart.map((item) => ({ variant_id: item.variantId, quantity: item.quantity, unit_price_ars_cents: item.unitPriceCents }));
+      const validation = await apiFetch<CartValidation>('/api/cart/validate', { method: 'POST', body: JSON.stringify({ items }) });
+      if (!validation.valid) { toast.push(validation.errors.join('. '), 'error'); return; }
+      const order = await apiFetch<Order>('/api/orders', { method: 'POST', body: JSON.stringify({ items, customer_name: name, customer_email: email, customer_phone: phone, shipping_address: { address, province, postal_code: postalCode, shipping_option: selectedShipping }, shipping_cost_ars_cents: shipping, discount_code: discountCode }) });
+      const pref = await apiFetch<{ init_point: string }>('/api/checkout/mercadopago/preference', { method: 'POST', body: JSON.stringify({ external_reference: order.external_reference }) });
+      location.href = pref.init_point;
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'No se pudo finalizar la compra';
+      toast.push(error, 'error');
+    } finally {
+      checkingOut = false;
+    }
   }
   async function loadShippingOptions() {
     if (!postalCode.trim()) { toast.push('Ingresá el código postal', 'error'); return; }
@@ -75,24 +96,26 @@
       });
       selectedShippingID = shippingOptions[0]?.id ?? '';
       if (!shippingOptions.length) toast.push('No encontramos opciones de envío', 'error');
+    } catch (err) {
+      toast.push(err instanceof Error ? err.message : 'No se pudo cotizar el envío', 'error');
+      shippingOptions = [];
+      selectedShippingID = '';
     } finally {
       quoting = false;
     }
   }
   function wa() {
     const summary = $cart.map((i) => `${i.productName} ${i.sizeML}ml x${i.quantity}`).join(', ');
-    return `https://wa.me/${env.PUBLIC_WHATSAPP_NUMBER ?? '5491100000000'}?text=${encodeURIComponent(`Hola, quiero consultar por mi carrito: ${summary}`)}`;
-  }
-  function updateQuantity(event: Event, variantId: string) {
-    const input = event.currentTarget as HTMLInputElement;
-    const next = Number(input.value);
-    const clamped = Math.max(1, Math.min(99, Number.isFinite(next) ? next : 1));
-    cart.setQuantity(variantId, clamped);
-    input.value = String(clamped);
+    return `https://wa.me/${PUBLIC_WHATSAPP_NUMBER || '5491100000000'}?text=${encodeURIComponent(`Hola, quiero consultar por mi carrito: ${summary}`)}`;
   }
 </script>
 
-<svelte:head><title>Carrito | ELIXIR Exclusive</title></svelte:head>
+<svelte:head>
+  <title>Carrito | ELIXIR Exclusive</title>
+  <meta name="description" content="Revisá tu carrito, cotizá envío y finalizá tu compra en ELIXIR Exclusive." />
+  <meta property="og:title" content="Carrito | ELIXIR Exclusive" />
+  <meta property="og:description" content="Checkout seguro con envío nacional y pago en ARS." />
+</svelte:head>
 
 <section class="container page-pad">
   <p class="eyebrow">Finalizar compra</p>
@@ -108,12 +131,33 @@
   <div class="cart-page">
     <div class="lines">
       {#each $cart as item}
-        <article>
-          <img src={item.image} alt={item.productName} />
-          <div><h2>{item.productName}</h2><p>{item.sizeML}ml · {formatARS(item.unitPriceCents)}</p></div>
-          <input class="input" type="number" min="1" max="99" value={item.quantity} on:input={(event) => updateQuantity(event, item.variantId)} />
-          <strong>{formatARS(item.quantity * item.unitPriceCents)}</strong>
-          <button type="button" on:click={() => cart.remove(item.variantId)}>Quitar</button>
+        <article class="cart-line">
+          <a class="line-image" href={`/fragrances/${item.productSlug}`}>
+            <img src={item.image} alt={item.productName} />
+          </a>
+          <div class="line-details">
+            <a class="line-name" href={`/fragrances/${item.productSlug}`}>
+              <h2>{item.productName}</h2>
+            </a>
+            <p class="line-variant">{item.sizeML}ml</p>
+            <p class="line-unit-price">{formatARS(item.unitPriceCents)} c/u</p>
+          </div>
+          <div class="line-quantity">
+            <QuantityStepper
+              value={item.quantity}
+              min={1}
+              max={99}
+              onchange={(value) => cart.setQuantity(item.variantId, value)}
+            />
+          </div>
+          <div class="line-total">
+            <strong>{formatARS(item.quantity * item.unitPriceCents)}</strong>
+          </div>
+          <button class="line-remove" type="button" on:click={() => cart.remove(item.variantId)} aria-label="Quitar producto">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+          </button>
         </article>
       {/each}
     </div>
@@ -139,7 +183,8 @@
       </section>
       <div class="discount"><input class="input" placeholder="Código de descuento" bind:value={discountCode} /><button class="btn" type="button" on:click={applyDiscount}>Aplicar</button></div>
       <div class="totals"><span>Subtotal</span><b>{formatARS($cartSubtotal)}</b><span>Envío</span><b>{formatARS(shipping)}</b><span>Descuento</span><b>{formatARS(discount)}</b><span>Total</span><strong>{formatARS(total)}</strong></div>
-      <button class="btn primary" type="submit" disabled={$cart.length === 0}>Finalizar compra</button>
+      {#if error}<p class="error">{error}</p>{/if}
+      <button class="btn primary" type="submit" disabled={$cart.length === 0 || checkingOut}>{checkingOut ? 'Redirigiendo...' : 'Finalizar compra'}</button>
       <a class="btn" href={wa()} target="_blank" rel="noreferrer">Consultar por WhatsApp</a>
     </form>
   </div>
@@ -148,24 +193,134 @@
 
 <style>
   .cart-page { display: grid; grid-template-columns: 1fr 390px; gap: 52px; align-items: start; }
-  .lines { display: grid; gap: 18px; }
-  article { display: grid; grid-template-columns: 92px 1fr 74px auto auto; gap: 16px; align-items: center; border-top: 1px solid var(--color-border); padding-top: 18px; }
-  article img { width: 92px; height: 110px; object-fit: cover; }
-  h2 { margin: 0; font-size: 1rem; }
-  p { margin: 6px 0 0; color: var(--color-text-muted); }
-  article button { background: transparent; border: 0; color: var(--color-gold); }
-  .summary { display: grid; gap: 16px; border: 1px solid var(--color-border); padding: 22px; background: var(--color-surface); }
+  .lines { display: grid; gap: 0; }
+  .cart-line {
+    display: grid;
+    grid-template-columns: 110px 1fr auto auto 40px;
+    grid-template-rows: auto;
+    gap: 20px;
+    align-items: center;
+    padding: 24px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .cart-line:first-child { padding-top: 0; }
+  .line-image {
+    display: block;
+    width: 110px;
+    height: 130px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--color-surface);
+    flex-shrink: 0;
+  }
+  .line-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  .line-image:hover img { transform: scale(1.05); }
+  .line-details {
+    display: grid;
+    gap: 4px;
+    align-self: center;
+    min-width: 0;
+  }
+  .line-name { color: var(--color-text); }
+  .line-name h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .line-name:hover h2 { color: var(--color-emerald-dark); }
+  .line-variant {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+  }
+  .line-unit-price {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+  }
+  .line-quantity {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .line-total {
+    text-align: right;
+    min-width: 100px;
+  }
+  .line-total strong {
+    color: var(--color-text);
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+  .line-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .line-remove:hover {
+    color: var(--color-danger-soft);
+    background: rgba(224,163,154,0.08);
+  }
+  .summary { display: grid; gap: 16px; border-radius: 14px; padding: 22px; background: var(--color-surface); box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
+  .error { color: var(--color-danger-soft); }
   .compact { gap: 12px; }
   .discount { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
   .shipping-options { display: grid; gap: 12px; }
   .shipping-head { display: flex; justify-content: space-between; align-items: center; color: var(--color-text-muted); }
   .option-list { display: grid; gap: 8px; }
-  .option-list label { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--color-border); padding: 12px; color: var(--color-text-muted); cursor: pointer; }
-  .option-list label.active { border-color: var(--color-gold); color: var(--color-text); }
+  .option-list label { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; border-radius: 6px; background: rgba(45,42,36,0.04); padding: 12px; color: var(--color-text-muted); cursor: pointer; }
+  .option-list label.active { background: rgba(107,191,138,0.12); color: var(--color-text); }
   .option-list small { display: block; margin-top: 4px; color: var(--color-text-muted); }
   .totals { display: grid; grid-template-columns: 1fr auto; gap: 10px; color: var(--color-text-muted); border-top: 1px solid var(--color-border); padding-top: 16px; }
-  .totals strong { color: var(--color-gold); font-size: 1.35rem; }
+  .totals strong { color: var(--color-gold-dark); font-size: 1.35rem; }
   .empty { min-height: 50vh; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
   .empty h2 { font-size: clamp(2.8rem, 6vw, 5rem); margin: 0; }
-  @media (max-width: 920px) { .cart-page, article { grid-template-columns: 1fr; } }
+  @media (max-width: 920px) {
+    .cart-page {
+      grid-template-columns: 1fr;
+      gap: 40px;
+    }
+    .cart-line {
+      position: relative;
+      grid-template-columns: 90px 1fr auto;
+      grid-template-rows: auto auto;
+      gap: 12px 16px;
+    }
+    .line-image {
+      grid-row: 1 / 3;
+      width: 90px;
+      height: 108px;
+    }
+    .line-details {
+      grid-column: 2 / 4;
+      padding-right: 44px;
+    }
+    .line-quantity {
+      grid-column: 2;
+      justify-content: flex-start;
+    }
+    .line-total {
+      text-align: right;
+      min-width: auto;
+    }
+    .line-remove {
+      position: absolute;
+      top: 24px;
+      right: 0;
+    }
+  }
 </style>

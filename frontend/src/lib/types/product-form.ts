@@ -13,6 +13,7 @@ export type ProductFormValue = {
   heart_notes: string[];
   base_notes: string[];
   featured: boolean;
+  active: boolean;
   display_order: number;
   variants: VariantFormValue[];
   images: ImageFormValue[];

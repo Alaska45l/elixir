@@ -53,9 +53,7 @@ INSERT INTO site_settings (
   '<p>Los cambios se revisan caso por caso con el producto cerrado, sin uso y dentro de los plazos informados por atención al cliente.</p>',
   '[
     {"label":"Fragancias Masculinas","href":"/fragrances?gender=Masculino"},
-    {"label":"Fragancias Femeninas","href":"/fragrances?gender=Femenino"},
-    {"label":"Línea Oriental","href":"/fragrances?family=Oriental"},
-    {"label":"Línea Amaderada","href":"/fragrances?family=Amaderado"}
+    {"label":"Fragancias Femeninas","href":"/fragrances?gender=Femenino"}
   ]'::jsonb
 ) ON CONFLICT (id) DO NOTHING;
 
